@@ -838,16 +838,34 @@
 
   // MARK: - Home Settings
 
+  var THEME_NAMES = {
+    dark: function () { return tr('Escuro', 'Dark', 'Oscuro'); },
+    oled: function () { return tr('Preto OLED', 'OLED black', 'Negro OLED'); },
+    light: function () { return tr('Claro', 'Light', 'Claro'); }
+  };
+  var ACCENTS = ['blue', 'green', 'purple', 'orange', 'pink', 'red', 'white'];
+  var ACCENT_NAMES = {
+    blue: function () { return tr('Azul', 'Blue', 'Azul'); },
+    green: function () { return tr('Verde', 'Green', 'Verde'); },
+    purple: function () { return tr('Roxo', 'Purple', 'Morado'); },
+    orange: function () { return tr('Laranja', 'Orange', 'Naranja'); },
+    pink: function () { return tr('Rosa', 'Pink', 'Rosa'); },
+    red: function () { return tr('Vermelho', 'Red', 'Rojo'); },
+    white: function () { return tr('Branco', 'White', 'Blanco'); }
+  };
+
   function settingRows() {
-    var lang = Prefs.language(), unit = Prefs.temperature(), theme = Prefs.theme();
+    var lang = Prefs.language(), unit = Prefs.temperature(), theme = Prefs.theme(), accent = Prefs.accent();
     var auto = tr('Automático', 'Automatic', 'Automático'), on = tr('Ligado', 'On', 'Activado'), off = tr('Desligado', 'Off', 'Desactivado');
     var rows = [
       {label: tr('Idioma', 'Language', 'Idioma'), value: lang === 'ru' ? 'Русский' : lang === 'de' ? 'Deutsch' : lang === 'pt' ? 'Português' : lang === 'en' ? 'English' : lang === 'es' ? 'Español' : auto,
         step: function (d) { cycle('language', ['auto', 'de', 'en', 'es', 'pt', 'ru'], lang, d); I18N.set(Prefs.language()); renderAll(); }},
       {label: tr('Temperatura', 'Temperature', 'Temperatura'), value: unit === 'C' ? '°C' : unit === 'F' ? '°F' : auto,
         step: function (d) { cycle('temperature', ['auto', 'C', 'F'], unit, d); renderPanels(); }},
-      {label: tr('Tema', 'Theme', 'Tema'), value: theme === 'light' ? tr('Claro', 'Light', 'Claro') : theme === 'dark' ? tr('Escuro', 'Dark', 'Oscuro') : auto,
-        step: function (d) { cycle('theme', ['auto', 'light', 'dark'], theme, d); checkNight(); }},
+      {label: tr('Tema', 'Theme', 'Tema'), value: THEME_NAMES[theme] ? THEME_NAMES[theme]() : auto,
+        step: function (d) { cycle('theme', ['auto', 'dark', 'oled', 'light'], theme, d); checkNight(); }},
+      {label: tr('Cor de destaque', 'Accent color', 'Color de acento'), value: ACCENT_NAMES[accent] ? ACCENT_NAMES[accent]() : ACCENT_NAMES.blue(),
+        step: function (d) { cycle('accent', ACCENTS, accent, d); applyAccent(); }},
       {label: tr('Widget do clima', 'Weather widget', 'Widget del clima'), toggle: Prefs.weather(),
         step: function () { Prefs.set('weather', !Prefs.weather()); renderPanels(); }},
       {label: tr('Widget de cotações', 'Quotes widget', 'Widget de cotizaciones'), toggle: Prefs.quotes(),
@@ -1131,6 +1149,13 @@
 
   function checkNight() {
     setClass(body, 'night', Data.isNight(Date.now()));
+    setClass(body, 'oled', Prefs.theme() === 'oled');
+  }
+
+  function applyAccent() {
+    var a = Prefs.accent();
+    if (ACCENTS.indexOf(a) < 0) a = 'blue';
+    for (var i = 0; i < ACCENTS.length; i++) setClass(body, 'accent-' + ACCENTS[i], ACCENTS[i] === a);
   }
 
   var saverOn = false, idleAt = Date.now(), saverIndex = 0, saverTimer = 0, SAVER_AFTER = 5 * 60000;
@@ -1269,6 +1294,8 @@
 
   I18N.set(Prefs.language());
   fit();
+  checkNight();
+  applyAccent();
   renderTop();
   loadApps(function () {
     renderAll();
