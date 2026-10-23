@@ -133,7 +133,7 @@
   // MARK: - Focus
 
   var Z = {TOP: 'top', CARDS: 'cards', SHELF: 'shelf', DRAWER: 'drawer', APPS: 'apps', SETTINGS: 'settings', EDIT: 'edit'};
-  var st = {zone: Z.SHELF, top: 0, tab: 0, card: 0, shelf: 0, drawer: 0, grid: 0, row: 0, edit: 0};
+  var st = {zone: Z.SHELF, top: 0, tab: 0, card: 0, shelf: 0, shelfPos: 0, drawer: 0, grid: 0, row: 0, edit: 0};
   var cards = [];
 
   function sheetOpen() { return st.zone === Z.APPS || st.zone === Z.SETTINGS || st.zone === Z.EDIT; }
@@ -150,9 +150,9 @@
     setClass($('quotes'), 'hide', st.zone === Z.TOP && st.top >= 3);
     list = $('cards').children;
     for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.CARDS && st.card === i);
-    list = $('tiles').children;
-    for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.SHELF && st.shelf === i);
     scrollShelf();
+    list = $('tiles').children;
+    for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.SHELF && list[i].k === st.shelfPos);
     list = document.querySelectorAll('#drawer .key');
     for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.DRAWER && st.drawer === i);
     list = document.querySelectorAll('#apps .cell');
@@ -289,48 +289,92 @@
   // MARK: - Shelf
 
   // The shelf has no limit: fixed-size tiles in a strip that slides inside the fixed glass; only the tiles near the view have a face.
-  var SH = {tw: 126 * 16 / 9, th: 126, gap: 48, pad: 40, left: 40, view: 1760, shift: 0, clip: null};
+  var SH = {tw: 126 * 16 / 9, th: 126, gap: 48, pad: 40, left: 40, view: 1760, shift: 0, clip: null, pool: {}, win: 7};
 
   function shelfStep() { return SH.tw + SH.gap; }
 
-  /** Where the strip sits (translateX in the clip) with tile i in focus: centered when it can be, never past the ends. */
-  function shelfShiftFor(i) {
-    var n = shelf.length, full = n * SH.tw + Math.max(0, n - 1) * SH.gap;
-    if (full <= SH.view) return SH.pad + (SH.view - full) / 2;
-    var s = SH.pad + SH.view / 2 - (i * shelfStep() + SH.tw / 2);
-    return Math.max(SH.pad + SH.view - full, Math.min(SH.pad, s));
+  function mod(a, n) { return ((a % n) + n) % n; }
+
+  /** Everything fits in the glass: the tiles stay still and centered. Otherwise the strip is endless. */
+  function shelfFits() {
+    var n = shelf.length;
+    return n * shelfStep() - SH.gap <= SH.view;
   }
 
-  /** Tile i's center on the screen, as it will be once the strip has settled (the real rect lags during the slide). */
-  function shelfCenterX(i) {
+  /** Where the strip sits (translateX in the clip) with slot k in focus: centered, and endless when it doesn't all fit. */
+  function shelfShiftFor(k) {
+    var n = shelf.length;
+    if (shelfFits()) return SH.pad + (SH.view - (n * SH.tw + Math.max(0, n - 1) * SH.gap)) / 2;
+    return SH.pad + SH.view / 2 - (k * shelfStep() + SH.tw / 2);
+  }
+
+  /** Slot k's center on the screen, as it will be once the strip has settled (the real rect lags during the slide). */
+  function shelfCenterX(k) {
     var r = stage.getBoundingClientRect();
-    return r.left + (SH.left + SH.shift + i * shelfStep() + SH.tw / 2) * r.width / 1920;
+    return r.left + (SH.left + SH.shift + k * shelfStep() + SH.tw / 2) * r.width / 1920;
   }
 
-  /** The tile whose settled center is nearest to a screen x. */
+  /** The visible slot (its k) whose settled center is nearest to a screen x. */
   function nearestShelf(x) {
     var r = stage.getBoundingClientRect(), sx = (x - r.left) * 1920 / r.width;
-    var i = Math.round((sx - SH.left - SH.shift - SH.tw / 2) / shelfStep());
-    return Math.max(0, Math.min(shelf.length - 1, i));
+    var k = Math.round((sx - SH.left - SH.shift - SH.tw / 2) / shelfStep());
+    return shelfFits() ? Math.max(0, Math.min(shelf.length - 1, k)) : k;
   }
 
-  function fillTile(i, on) {
-    var t = $('tiles').children[i];
-    if (!t || !!t.facing === on) return;
-    t.facing = on;
+  function fillTile(t) {
+    var app = shelf[mod(t.k, shelf.length)];
+    t.style.left = (t.k * shelfStep()) + 'px';
+    if (t.app === app) return;
+    t.app = app;
     t.innerHTML = '';
-    if (on) face(shelf[i], t, wordFit(shelf[i].title, SH.tw, 30));
+    face(app, t, wordFit(app.title, SH.tw, 30));
   }
 
+  function newTile() {
+    var t = el('div', 'tile', $('tiles'));
+    t.style.top = SH.pad + 'px';
+    t.style.width = SH.tw + 'px';
+    t.style.height = SH.th + 'px';
+    hover(t, Z.SHELF, 0);
+    return t;
+  }
+
+  /** Moves the strip to st.shelfPos and keeps only the slots around it (nodes are reused). */
   function scrollShelf() {
     var n = shelf.length;
     if (!n) return;
-    st.shelf = Math.max(0, Math.min(n - 1, st.shelf));
-    SH.shift = shelfShiftFor(st.shelf);
-    var tiles = $('tiles');
+    var tiles = $('tiles'), fits = shelfFits(), i, t, k;
+    if (fits) st.shelfPos = Math.max(0, Math.min(n - 1, mod(st.shelfPos, n)));
+    var renorm = !fits && Math.abs(st.shelfPos) > 10000;
+    if (renorm) {
+      var delta = st.shelfPos - mod(st.shelfPos, n);
+      st.shelfPos -= delta;
+      SH.pool = {};
+      for (i = 0; i < tiles.children.length; i++) {
+        t = tiles.children[i];
+        t.k -= delta;
+        SH.pool[t.k] = t;
+      }
+      tiles.style.webkitTransition = tiles.style.transition = 'none';
+    }
+    st.shelf = mod(st.shelfPos, n);
+    SH.shift = shelfShiftFor(st.shelfPos);
     tiles.style.webkitTransform = tiles.style.transform = 'translateX(' + SH.shift + 'px)';
-    var lo = Math.floor((SH.left - SH.shift) / shelfStep()) - 4, hi = Math.ceil((SH.left + 1840 - SH.shift) / shelfStep()) + 4;
-    for (var i = 0; i < n; i++) fillTile(i, i >= lo && i <= hi);
+    var lo = fits ? 0 : st.shelfPos - SH.win, hi = fits ? n - 1 : st.shelfPos + SH.win, free = [];
+    for (i = tiles.children.length - 1; i >= 0; i--) {
+      t = tiles.children[i];
+      if (t.k < lo || t.k > hi) { delete SH.pool[t.k]; free.push(t); }
+    }
+    for (k = lo; k <= hi; k++) {
+      t = SH.pool[k];
+      if (!t) { t = free.pop() || newTile(); t.k = k; SH.pool[k] = t; }
+      fillTile(t);
+    }
+    while (free.length) tiles.removeChild(free.pop());
+    if (renorm) {
+      void tiles.offsetWidth;
+      tiles.style.webkitTransition = tiles.style.transition = '';
+    }
   }
 
   function renderShelf() {
@@ -349,15 +393,9 @@
     }
     SH.clip.style.display = n ? '' : 'none';
     tiles.innerHTML = '';
-    for (var i = 0; i < n; i++) {
-      var t = el('div', 'tile', tiles);
-      t.style.left = (i * shelfStep()) + 'px';
-      t.style.top = SH.pad + 'px';
-      t.style.width = SH.tw + 'px';
-      t.style.height = SH.th + 'px';
-      hover(t, Z.SHELF, i);
-    }
-    st.shelf = Math.min(st.shelf, Math.max(0, n - 1));
+    SH.pool = {};
+    SH.win = Math.ceil(SH.view / shelfStep() / 2) + 3;
+    st.shelfPos = Math.min(st.shelf, Math.max(0, n - 1));
     // first paint without sliding in from the old place
     tiles.style.webkitTransition = tiles.style.transition = 'none';
     scrollShelf();
@@ -471,14 +509,14 @@
   function openDrawer() {
     if (!drawerItems.length) return;
     st.zone = Z.DRAWER;
-    st.drawer = Math.min(drawerItems.length - 1, nearest(document.querySelectorAll('#drawer .key'), shelfCenterX(st.shelf)));
+    st.drawer = Math.min(drawerItems.length - 1, nearest(document.querySelectorAll('#drawer .key'), shelfCenterX(st.shelfPos)));
     updateFocus();
   }
 
   function closeDrawer() {
     var keys = document.querySelectorAll('#drawer .key');
     st.zone = Z.SHELF;
-    if (shelf.length) st.shelf = nearestShelf(centerX(keys[st.drawer]));
+    if (shelf.length) st.shelfPos = nearestShelf(centerX(keys[st.drawer]));
     updateFocus();
   }
 
@@ -710,17 +748,17 @@
     var cardNodes = $('cards').children;
     switch (st.zone) {
       case Z.SHELF:
-        if (dx) { if (shelf.length > 1) st.shelf = (st.shelf + dx + shelf.length) % shelf.length; }
+        if (dx) { if (shelf.length > 1) st.shelfPos += dx; }
         else if (dy > 0) { openDrawer(); return; }
         else if (dy < 0) {
-          if (cards.length) { st.zone = Z.CARDS; st.card = nearest(cardNodes, shelfCenterX(st.shelf)); }
+          if (cards.length) { st.zone = Z.CARDS; st.card = nearest(cardNodes, shelfCenterX(st.shelfPos)); }
           else { st.zone = Z.TOP; st.top = st.tab; }
         }
         break;
       case Z.CARDS:
         if (dx) st.card = Math.max(0, Math.min(cards.length - 1, st.card + dx));
         else if (dy < 0) { st.zone = Z.TOP; st.top = st.tab; }
-        else if (shelf.length) { st.zone = Z.SHELF; st.shelf = nearestShelf(centerX(cardNodes[st.card])); }
+        else if (shelf.length) { st.zone = Z.SHELF; st.shelfPos = nearestShelf(centerX(cardNodes[st.card])); }
         break;
       case Z.TOP:
         if (dx) {
@@ -772,7 +810,7 @@
       st.zone = zone;
       if (zone === Z.TOP) { st.top = index; if (index < 3) selectTab(index); }
       else if (zone === Z.CARDS) st.card = index;
-      else if (zone === Z.SHELF) st.shelf = index;
+      else if (zone === Z.SHELF) st.shelfPos = node.k;
       else if (zone === Z.DRAWER) st.drawer = index;
       else if (zone === Z.APPS) st.grid = index;
       else if (zone === Z.SETTINGS) st.row = index;
@@ -905,7 +943,7 @@
     hideSaver();
     closeSheets();
     st.zone = Z.SHELF;
-    st.shelf = 0;
+    st.shelf = st.shelfPos = 0;
     if (st.tab !== 0) { st.tab = 0; renderCards(); }
     updateFocus();
   }
