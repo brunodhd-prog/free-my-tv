@@ -496,6 +496,7 @@ var Data = (function () {
 
   var ROWS_KEY = 'fmt.rows.v1', ROWS_TTL = 3600000;
   var rowsCache = {at: 0, lang: '', stamp: '', rows: []}, fetchingRows = false, rowsFailedAt = 0;
+  var rowsMessage = '', rowsAttempt = 0;   // why the last refresh failed ('' = it didn't); the attempt number guards the watchdog
   try {
     var savedRows = JSON.parse(localStorage.getItem(ROWS_KEY));
     if (savedRows && savedRows.rows && savedRows.rows.length !== undefined) rowsCache = savedRows;
@@ -515,11 +516,30 @@ var Data = (function () {
         running++;
         tmdb(job.path, function (err, body) {
           running--;
-          try { job.done(err, body); } catch (e) {}
+          try { job.done(err, body); } catch (e) { rowsBroke(e); }
           pump();
         });
       })(queued.shift());
     }
+  }
+
+  /** The refresh stops here with a reason (shown on the home screen); the next try waits 10 minutes, as for any failure. */
+  function rowsFail(message) {
+    fetchingRows = false;
+    rowsFailedAt = Date.now();
+    rowsMessage = message;
+  }
+
+  function rowsBroke(e) {
+    rowsFail(tr('erro no app: ', 'app error: ', 'error de la app: ') + (e && e.message ? e.message : String(e)));
+  }
+
+  /** The words for a failed request. */
+  function rowsReason(err) {
+    var m = err && err.message ? err.message : '';
+    if (m === 'TMDB rejected the key') return tr('TMDB rejeitou a chave', 'TMDB rejected the key', 'TMDB rechazó la clave');
+    var http = /^HTTP (\d+)/.exec(m);
+    return tr('sem conexão', 'no connection', 'sin conexión') + (http ? ' (HTTP ' + http[1] + ')' : '');
   }
 
   function rowItem(o, kind, app, name) {
@@ -546,13 +566,19 @@ var Data = (function () {
   function rowsStamp() { return sourceStamp() + ':' + I18N.lang + ':' + lang(); }
 
   function refreshRows() {
-    if (!KEY || fetchingRows || !installed.length) return;
+    if (!KEY || fetchingRows) return;
+    if (!installed.length) { rowsMessage = tr('sem apps', 'no apps', 'sin apps'); return; }
     var t = Date.now(), st = rowsStamp();
     var fresh = rowsCache.stamp === st && rowsCache.rows.length && t - rowsCache.at < ROWS_TTL && t >= rowsCache.at;
     if (fresh || (rowsFailedAt && t - rowsFailedAt < 10 * 60000 && t >= rowsFailedAt)) return;
     fetchingRows = true;
+    rowsMessage = '';
+    var attempt = ++rowsAttempt;
+    setTimeout(function () {   // a request or callback that never comes back doesn't leave the shelves loading for ever
+      if (fetchingRows && attempt === rowsAttempt) rowsFail(tr('tempo esgotado', 'timed out', 'tiempo agotado'));
+    }, 90000);
     queueGet('/watch/providers/movie?language=' + lang() + '&watch_region=' + REGION, function (err, res) {
-      var svcs = [], byKey = {}, all = [];
+      var svcs = [], byKey = {}, all = [], firstErr = null;
       for (var i = 0; !err && res && res.results && i < res.results.length; i++) {
         var s = service(res.results[i].provider_name);
         if (!s || !appFor(s[1])) continue;
@@ -560,7 +586,8 @@ var Data = (function () {
         if (!byKey[s[1]]) { byKey[s[1]] = {key: s[1], name: s[4], ids: []}; svcs.push(byKey[s[1]]); }
         byKey[s[1]].ids.push(res.results[i].provider_id);
       }
-      if (err || !all.length) { fetchingRows = false; rowsFailedAt = Date.now(); return; }
+      if (err) { rowsFail(rowsReason(err)); return; }
+      if (!all.length) { rowsFail(tr('nenhum serviço de streaming reconhecido', 'no streaming service recognized', 'ningún servicio de streaming reconocido')); return; }
       var order = {};
       for (var o = 0; o < SERVICES.length; o++) order[SERVICES[o][1]] = o;
       svcs.sort(function (a, b) { return order[a.key] - order[b.key]; });
@@ -572,7 +599,8 @@ var Data = (function () {
         pending++;
         var q = '/discover/' + kind + '?with_watch_providers=' + encodeURIComponent(ids.join('|')) + common + extra;
         queueGet(q, function (e, r) {
-          got[slot] = e ? [] : rowList(r, kind, app, name);
+          if (e && !firstErr) firstErr = e;
+          try { got[slot] = e ? [] : rowList(r, kind, app, name); } catch (ex) { got[slot] = []; rowsBroke(ex); }
           if (--pending === 0) assemble();
         });
       }
@@ -588,6 +616,10 @@ var Data = (function () {
       }
 
       function assemble() {
+        try { build(); } catch (ex) { rowsBroke(ex); }
+      }
+
+      function build() {
         var rows = [], j, n;
         // Which service has each title, from the per-service lists (first one wins).
         for (j = 0; j < svcs.length; j++) {
@@ -613,12 +645,13 @@ var Data = (function () {
           alternate(items, seen, got['m' + svcs[j].key] || [], got['t' + svcs[j].key] || [], 20);
           if (items.length) rows.push({id: 'svc-' + svcs[j].key, title: tr('Em ' + svcs[j].name, 'On ' + svcs[j].name, 'En ' + svcs[j].name), items: items});
         }
+        if (!rows.length) { rowsFail(firstErr ? rowsReason(firstErr) : tr('nenhum título', 'no titles', 'ningún título')); return; }
         fetchingRows = false;
-        if (!rows.length) { rowsFailedAt = Date.now(); return; }
         rowsFailedAt = 0;
+        rowsMessage = '';
         rowsCache = {at: Date.now(), lang: I18N.lang, stamp: st, rows: rows};
         saveRows();
-        changed();
+        try { changed(); } catch (ex) { rowsMessage = tr('erro ao mostrar: ', 'display error: ', 'error al mostrar: ') + ex.message; }
       }
     });
   }
@@ -651,7 +684,20 @@ var Data = (function () {
     city: Place.city,
     currency: CURRENCY,
     onChange: function (fn) { listeners.push(fn); },
-    setApps: function (apps) { installed = apps; },
+    setApps: function (apps) {
+      var sig = apps.map(function (a) { return a.id; }).sort().join('|'), before = installed.map(function (a) { return a.id; }).sort().join('|');
+      installed = apps;
+      if (sig !== before) { rowsFailedAt = 0; rowsMessage = ''; }   // a new list of apps: try the shelves again right away
+    },
+    /** Tries the shelves again now (a failure's 10 minute wait is skipped). */
+    retryRows: function () { rowsFailedAt = 0; refreshRows(); },
+    /** {state: 'idle' | 'loading' | 'ok' | 'error', message}: what the shelves are doing, and why they failed. */
+    rowsStatus: function () {
+      if (!KEY) return {state: 'idle', message: ''};
+      if (fetchingRows) return {state: 'loading', message: ''};
+      if (rowsMessage) return {state: 'error', message: rowsMessage};
+      return {state: rows().length ? 'ok' : 'idle', message: ''};
+    },
     appFor: appFor,
     refresh: function () { refreshWeather(); refreshPrices(); refreshRecs(); refreshRows(); },
     rows: rows,

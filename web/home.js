@@ -147,8 +147,8 @@
     }
     if ($('ptitle') && tabNames[st.tab] && $('ptitle').textContent !== tabNames[st.tab]) $('ptitle').textContent = tabNames[st.tab];
     list = $('buttons').children;
-    for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.TOP && st.top === 4 + i);
-    setClass($('quotes'), 'hide', st.zone === Z.TOP && st.top >= 4);
+    for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.TOP && st.top === 5 + i);
+    setClass($('quotes'), 'hide', st.zone === Z.TOP && st.top >= 5);
     paintRows();
     scrollShelf();
     list = $('tiles').children;
@@ -157,7 +157,7 @@
     for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.DRAWER && st.drawer === i);
     list = document.querySelectorAll('#apps .cell');
     for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.APPS && st.grid === i);
-    var rows = Math.max(1, Math.ceil(others.length / 5)), r = Math.floor(st.grid / 5), first = Math.max(0, Math.min(rows - 3, r - 1));
+    var rows = Math.max(1, Math.ceil(apps.length / 5)), r = Math.floor(st.grid / 5), first = Math.max(0, Math.min(rows - 3, r - 1));
     $('apps').lastChild.style.webkitTransform = $('apps').lastChild.style.transform = 'translateY(' + (-first * 239) + 'px)';
     focusRows($('settings'), st.row, st.zone === Z.SETTINGS);
     focusRows($('shelfedit'), st.edit, st.zone === Z.EDIT);
@@ -204,6 +204,10 @@
       var t = el('button', 'tab', tabs, names[i]);
       hover(t, Z.TOP, i);
     }
+    var mine = el('button', 'tab', tabs, tr('Personalizar', 'Customize', 'Personalizar'));   // opens Settings at "Style"
+    mine.style.marginLeft = '28px';
+    mine.style.fontWeight = '600';
+    hover(mine, Z.TOP, 4);
     $('shelflabel').textContent = tr('Seus apps', 'Your apps', 'Tus apps');
     var buttons = $('buttons');
     buttons.innerHTML = '';
@@ -214,7 +218,7 @@
       r.style.left = (1596 + 88 * b) + 'px';
       sym(defs[b][0], r);
       el('div', 'tip', r, defs[b][1]);
-      hover(r, Z.TOP, 4 + b);
+      hover(r, Z.TOP, 5 + b);
     }
   }
 
@@ -307,6 +311,7 @@
     for (i = 0; i < next.length; i++) sig += next[i].id + ':' + next[i].items.length + ':' + next[i].items[0].id + ';';
     setClass(body, 'gtv', next.length > 0);
     setClass(body, 'no-rows', !next.length);
+    paintNote();
     if (sig === rowSig && !force) return;
     rowSig = sig;
     view = next;
@@ -412,6 +417,26 @@
     }
   }
 
+  /** Under the clock, when there's a TMDB key but no shelves: loading, or why they're unavailable. */
+  function paintNote() {
+    var n = $('rowsnote');
+    if (!n) {
+      n = el('div', '', $('top'));
+      n.id = 'rowsnote';
+      var ns = n.style;
+      ns.position = 'absolute'; ns.left = '80px'; ns.top = '544px'; ns.maxWidth = '1500px'; ns.fontSize = '24px'; ns.fontWeight = '500';
+    }
+    var text = '';
+    if (Data.hasKey() && hasClass(body, 'no-rows')) {
+      var status = Data.rowsStatus();
+      if (status.state === 'loading') text = tr('Carregando filmes e séries…', 'Loading movies and shows…', 'Cargando películas y series…');
+      else if (status.state === 'error') text = tr('Filmes e séries indisponíveis: ', 'Movies and shows unavailable: ', 'Películas y series no disponibles: ') + status.message;
+    }
+    if (n.textContent !== text) n.textContent = text;
+    n.style.display = text ? '' : 'none';
+    n.style.color = hasClass(body, 'night') ? 'rgba(245,245,247,0.62)' : '#6E6E73';
+  }
+
   // MARK: - Shelf
 
   // The shelf has no limit: fixed-size tiles in a strip that slides inside the fixed glass; only the tiles near the view have a face.
@@ -421,10 +446,10 @@
 
   function mod(a, n) { return ((a % n) + n) % n; }
 
-  /** Everything fits in the glass: the tiles stay still and centered. Otherwise the strip is endless. */
+  /** 1 to 3 apps: the tiles stay still and centered. From 4 apps on the strip is endless (a carousel, even when they'd fit). */
   function shelfFits() {
     var n = shelf.length;
-    return n * shelfStep() - SH.gap <= SH.view;
+    return n < 4 && n * shelfStep() - SH.gap <= SH.view;
   }
 
   /** Where the strip sits (translateX in the clip) with slot k in focus: centered, and endless when it doesn't all fit. */
@@ -810,19 +835,61 @@
 
   // MARK: - All Apps
 
+  /** The grid shows every app, in alphabetical order (a stable order: adding to the bar doesn't move anything). */
+  function gridApps() {
+    return apps.slice().sort(function (a, b) {
+      var x = a.title.toLowerCase(), y = b.title.toLowerCase();
+      return x < y ? -1 : x > y ? 1 : 0;
+    });
+  }
+
+  var gridList = [];
+
   function renderApps() {
-    var sheet = $('apps');
+    var sheet = $('apps'), grid = sheet.lastChild, hint = $('appshint');
     sheet.firstChild.textContent = tr('Todos os Apps', 'All Apps', 'Todas las apps');
-    var grid = sheet.lastChild;
+    if (!hint) {
+      hint = el('div', '');
+      hint.id = 'appshint';
+      var hs = hint.style;
+      hs.position = 'absolute'; hs.left = '0'; hs.right = '0'; hs.bottom = '0'; hs.height = '76px'; hs.lineHeight = '76px';
+      hs.textAlign = 'center'; hs.fontSize = '24px'; hs.fontWeight = '500'; hs.color = 'rgba(255,255,255,0.78)';
+      hs.background = 'rgba(0,0,0,0.78)'; hs.zIndex = '2';
+      sheet.insertBefore(hint, grid);
+    }
+    hint.textContent = tr('OK abre  \u00B7  Vermelho: adicionar/remover da barra', 'OK opens  \u00B7  Red: add/remove from the bar', 'OK abre  \u00B7  Rojo: añadir/quitar de la barra');
     grid.innerHTML = '';
-    for (var i = 0; i < others.length; i++) {
+    gridList = gridApps();
+    for (var i = 0; i < gridList.length; i++) {
       var r = Math.floor(i / 5), c = i % 5, cell = el('div', 'cell', grid);
       cell.style.left = (130 + c * 340) + 'px';
       cell.style.top = (196 + r * 239) + 'px';
-      face(others[i], el('div', 'face', cell), wordFit(others[i].title, 300, 34));
-      el('div', 'label', cell, others[i].title);
+      var box = el('div', 'face', cell);
+      face(gridList[i], box, wordFit(gridList[i].title, 300, 34));
+      if (shelf.indexOf(gridList[i]) >= 0) {
+        var badge = el('div', '', box, tr('Na barra', 'On the bar', 'En la barra')), bs = badge.style;
+        bs.position = 'absolute'; bs.right = '8px'; bs.top = '8px'; bs.padding = '0 12px'; bs.height = '30px'; bs.lineHeight = '30px';
+        bs.borderRadius = '15px'; bs.fontSize = '18px'; bs.fontWeight = '600'; bs.color = '#FFF'; bs.background = 'rgba(0,0,0,0.62)';
+      }
+      el('div', 'label', cell, gridList[i].title);
       hover(cell, Z.APPS, i);
     }
+  }
+
+  /** The focused app of the grid goes onto the shelf or off it (no limit). */
+  function toggleOnBar() {
+    var app = gridList[st.grid];
+    if (!app) return;
+    var ids = shelf.map(function (a) { return a.id; }), at = ids.indexOf(app.id);
+    if (at >= 0) ids.splice(at, 1);
+    else ids.push(app.id);
+    Prefs.set('shelf', ids);
+    pickShelf();
+    renderShelf();
+    renderApps();
+    updateFocus();
+    toast(at >= 0 ? app.title + tr(' saiu da barra', ' removed from the bar', ' quitada de la barra')
+        : app.title + tr(' foi para a barra', ' added to the bar', ' añadida a la barra'));
   }
 
   function openApps() {
@@ -837,7 +904,8 @@
     setClass($('apps'), 'open', false);
     setClass($('settings'), 'open', false);
     setClass($('shelfedit'), 'open', false);
-    st.zone = Z.SHELF;
+    if (shelf.length) st.zone = Z.SHELF;
+    else { st.zone = Z.TOP; st.top = st.tab; }
     updateFocus();
   }
 
@@ -897,7 +965,7 @@
         step: function (d) { cycle('language', ['auto', 'de', 'en', 'es', 'pt', 'ru'], lang, d); I18N.set(Prefs.language()); renderAll(); }},
       {label: tr('Temperatura', 'Temperature', 'Temperatura'), value: unit === 'C' ? '°C' : unit === 'F' ? '°F' : auto,
         step: function (d) { cycle('temperature', ['auto', 'C', 'F'], unit, d); renderPanels(); }},
-      {label: tr('Estilo', 'Style', 'Estilo'), value: (STYLE_NAMES[style] || STYLE_NAMES.hero)(),
+      {id: 'style', label: tr('Estilo', 'Style', 'Estilo'), value: (STYLE_NAMES[style] || STYLE_NAMES.hero)(),
         step: function (d) { cycle('style', ['hero', 'panels'], style, d); applyStyle(); }},
       {label: tr('Tema', 'Theme', 'Tema'), value: THEME_NAMES[theme] ? THEME_NAMES[theme]() : auto,
         step: function (d) { cycle('theme', ['auto', 'dark', 'oled', 'light'], theme, d); checkNight(); }},
@@ -916,7 +984,13 @@
           step: function () { if (Prefs.quotes()) { Prefs.setCoin(i, !Prefs.coin(i)); Data.settingsChanged(); } }});
       })(i);
     }
-    rows.push({label: tr('Prateleira', 'Shelf', 'Estante'), value: '›', step: function (d) { if (d >= 0) openShelfEdit(); }});
+    rows.push({id: 'shelf', label: tr('Prateleira', 'Shelf', 'Estante'), value: '›', step: function (d) { if (d >= 0) openShelfEdit(); }});
+    var access = TV.listAccess();   // LG only: whether the TV lets us list all its apps
+    if (access) {
+      var names2 = {allowed: tr('Permitida', 'Allowed', 'Permitida'), waiting: tr('Aguardando', 'Waiting', 'Esperando'), denied: tr('Negada', 'Denied', 'Denegada')};
+      rows.push({id: 'list', label: tr('Lista completa de apps', 'Full app list', 'Lista completa de apps'), value: names2[access], action: true,
+        step: function (d) { if (d >= 0) askAppList(); }});
+    }
     rows.push({label: tr('Ajustes da TV', 'TV Settings', 'Ajustes del TV'), value: '›', step: function (d) { if (d >= 0) tvSettings(); }});
     return rows;
   }
@@ -927,6 +1001,18 @@
   }
 
   var rowsNow = [];
+
+  function rowIndex(id) {
+    for (var i = 0; i < rowsNow.length; i++) if (rowsNow[i].id === id) return i;
+    return 0;
+  }
+
+  /** Forgets a "no" to the TV's remote control API and asks again; the TV shows its prompt. */
+  function askAppList() {
+    TV.askListAgain(function () { if (st.zone === Z.SETTINGS) renderSettings(); });
+    toast(tr('Aceite o pedido na TV e reabra o Free My TV', 'Accept the request on the TV and reopen Free My TV', 'Acepta la solicitud en el TV y vuelve a abrir Free My TV'));
+    renderSettings();
+  }
 
   function renderSettings() {
     var box = $('settings').firstChild;
@@ -943,6 +1029,7 @@
       else {
         var v = el('span', 'value', row);
         if (r.value === '›') v.textContent = '›';
+        else if (r.action) v.textContent = r.value + '  ›';
         else { el('span', 'chev', v, '‹'); v.appendChild(document.createTextNode(r.value)); el('span', 'chev', v, '›'); }
       }
       hover(row, Z.SETTINGS, i);
@@ -951,10 +1038,12 @@
     updateFocus();
   }
 
-  function openSettings() {
+  /** `start`: the id of the row to focus first ('style' from the top's Customize). */
+  function openSettings(start) {
     st.zone = Z.SETTINGS;
     st.row = 0;
     renderSettings();
+    if (typeof start === 'string') st.row = rowIndex(start);
     setClass($('settings'), 'open', true);
     updateFocus();
   }
@@ -1051,8 +1140,9 @@
       case Z.TOP:
         if (st.top < 3) return;
         if (st.top === 3) openApps();
-        else if (st.top === 4) { var live = liveTV(); if (live) launcher(live.id, tr('TV aberta', 'Live TV', 'TV en vivo'))(); }
-        else if (st.top === 5) { st.zone = Z.SHELF; openDrawer(); st.drawer = 1 < drawerInputs ? 1 : 0; updateFocus(); }
+        else if (st.top === 4) openSettings('style');
+        else if (st.top === 5) { var live = liveTV(); if (live) launcher(live.id, tr('TV aberta', 'Live TV', 'TV en vivo'))(); }
+        else if (st.top === 6) { st.zone = Z.SHELF; openDrawer(); st.drawer = 1 < drawerInputs ? 1 : 0; updateFocus(); }
         else openSettings();
         return;
       case Z.ROWS:
@@ -1067,7 +1157,7 @@
         if (drawerItems[st.drawer]) drawerItems[st.drawer].run();
         return;
       case Z.APPS:
-        if (others[st.grid]) launcher(others[st.grid].id, others[st.grid].title)();
+        if (gridList[st.grid]) launcher(gridList[st.grid].id, gridList[st.grid].title)();
         return;
       case Z.SETTINGS:
         if (rowsNow[st.row]) { rowsNow[st.row].step(1); if (st.zone === Z.SETTINGS) renderSettings(); }
@@ -1112,7 +1202,7 @@
         break;
       case Z.TOP:
         if (dx) {
-          st.top = Math.max(0, Math.min(6, st.top + dx));
+          st.top = Math.max(0, Math.min(7, st.top + dx));
           if (st.top < 3) selectTab(st.top);   // as on Apple TV: focusing a tab selects it
         } else if (dy > 0) {
           if (shelf.length) st.zone = Z.SHELF;
@@ -1125,13 +1215,13 @@
         break;
       case Z.APPS:
         var g = st.grid + dx + dy * 5;
-        if (g >= 0 && g < others.length && (dx === 0 || Math.floor(g / 5) === Math.floor(st.grid / 5))) st.grid = g;
+        if (g >= 0 && g < gridList.length && (dx === 0 || Math.floor(g / 5) === Math.floor(st.grid / 5))) st.grid = g;
         break;
       case Z.SETTINGS:
         if (dy) st.row = Math.max(0, Math.min(rowsNow.length - 1, st.row + dy));
         else if (dx && rowsNow[st.row]) {
           var r = rowsNow[st.row];
-          if (r.value !== '›') { r.step(dx); renderSettings(); }
+          if (r.value !== '›' && !r.action) { r.step(dx); renderSettings(); }
         }
         break;
       case Z.EDIT:
@@ -1143,7 +1233,7 @@
   }
 
   function back() {
-    if (st.zone === Z.EDIT) { setClass($('shelfedit'), 'open', false); openSettings(); st.row = rowsNow.length - 2; updateFocus(); return; }
+    if (st.zone === Z.EDIT) { setClass($('shelfedit'), 'open', false); openSettings('shelf'); return; }
     if (sheetOpen()) { closeSheets(); return; }
     if (st.zone === Z.DRAWER) { closeDrawer(); return; }
     if (st.zone === Z.ROWS && !shelf.length) { st.zone = Z.TOP; st.top = st.tab; updateFocus(); return; }
@@ -1187,6 +1277,7 @@
   function checkNight() {
     setClass(body, 'night', Data.isNight(Date.now()));
     setClass(body, 'oled', Prefs.theme() === 'oled');
+    paintNote();
   }
 
   function applyAccent() {
@@ -1255,9 +1346,22 @@
 
   // MARK: - Keys
 
+  // In the All Apps grid OK acts when released, so holding it (about 800 ms) can add or remove the app from the bar instead.
+  var okHeld = false, okFired = false, okTimer = 0, RED = 403;
+
   document.addEventListener('keydown', function (e) {
     var k = e.keyCode;
     if (poke()) { e.preventDefault(); return; }   // the first press only wakes the screen
+    if (k === RED && st.zone === Z.APPS) { toggleOnBar(); e.preventDefault(); return; }
+    if (k === TV.keys.ok && st.zone === Z.APPS) {
+      if (!okHeld) {
+        okHeld = true;
+        okFired = false;
+        okTimer = setTimeout(function () { okFired = true; if (st.zone === Z.APPS) toggleOnBar(); }, 800);
+      }
+      e.preventDefault();
+      return;
+    }
     if (k === TV.keys.left) move(-1, 0);
     else if (k === TV.keys.right) move(1, 0);
     else if (k === TV.keys.up) move(0, -1);
@@ -1265,6 +1369,13 @@
     else if (k === TV.keys.ok) activate();
     else if (k === TV.keys.back || k === 27 || k === 8) back();
     else return;
+    e.preventDefault();
+  });
+  document.addEventListener('keyup', function (e) {
+    if (e.keyCode !== TV.keys.ok || !okHeld) return;
+    okHeld = false;
+    clearTimeout(okTimer);
+    if (!okFired && st.zone === Z.APPS) activate();
     e.preventDefault();
   });
   document.addEventListener('mousemove', function () { poke(); });
@@ -1339,6 +1450,9 @@
     renderAll();
     Data.refresh();
   });
+  setInterval(paintNote, 2000);
+  // Shelves still empty 15 s after opening: one more try, without waiting out an earlier failure.
+  setTimeout(function () { if (Data.hasKey() && !Data.rows().length) { Data.retryRows(); paintNote(); } }, 15000);
   setInterval(function () {
     renderClock();
     checkNight();

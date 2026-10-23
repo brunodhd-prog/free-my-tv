@@ -37,6 +37,7 @@ var TV = (function () {
   // from the TV's remote control API on 127.0.0.1:3000 (the one LG's phone app uses), which takes file:// pages.
   // The TV asks once to allow it; the key it gives back is kept.
   var SSAP_KEY = 'fmtv.ssapKey', SSAP_REFUSED = 'fmtv.ssapRefused';
+  var directList = false;   // listLaunchPoints answered (webOS 5 and older): no permission needed
 
   /** One call to the remote control API; done(result) with null on failure. */
   function ssap(uri, done) {
@@ -144,7 +145,10 @@ var TV = (function () {
     ['com.disney.disneyplus-prod', 'Disney+'], ['com.wbd.stream', 'HBO Max'], ['com.hbo.hbomax', 'Max'],
     ['com.apple.appletv', 'Apple TV'], ['hulu', 'Hulu'], ['com.peacock.tv', 'Peacock'], ['com.nfl.app', 'NFL'],
     ['globoplaywebos', 'Globoplay'], ['spotify-beehive', 'Spotify'], ['tv.twitch.tv.starshot.lg', 'Twitch'],
-    ['cdp-30', 'Plex'], ['com.crunchyroll.webapp', 'Crunchyroll'], ['com.webos.app.browser', 'Web Browser']
+    ['cdp-30', 'Plex'], ['com.crunchyroll.webapp', 'Crunchyroll'], ['com.webos.app.browser', 'Web Browser'],
+    // Guesses (not confirmed on a TV): ids that LG's store apps plausibly use. Missing ones are simply not listed.
+    ['paramountplus', 'Paramount+'], ['com.paramount.paramountplus', 'Paramount+'], ['tv.pluto', 'Pluto TV'],
+    ['com.deezer.deezerlg', 'Deezer'], ['com.webos.app.photovideo', 'Photo & Video'], ['com.webos.app.music', 'Music']
   ];
 
   function knownApps(done) {
@@ -152,7 +156,12 @@ var TV = (function () {
     function finish() {
       if (sent) return;
       sent = true;
-      done(found.filter(function (x) { return x; }));
+      var seen = {};
+      done(found.filter(function (x) {
+        if (!x || seen[x.title]) return false;   // two guesses for one app: the first that exists
+        seen[x.title] = true;
+        return true;
+      }));
     }
     setTimeout(finish, 5000);   // an id that never answers doesn't hold the rest
     KNOWN.forEach(function (k, i) {
@@ -288,7 +297,7 @@ var TV = (function () {
         return out;
       }
       luna('luna://com.webos.applicationManager/listLaunchPoints', {}, function (res) {
-        if (res) { done(list(res)); return; }
+        if (res) { directList = true; done(list(res)); return; }
         // Denied to Developer Mode apps (webOS 6 and newer): once the TV has allowed the remote control API, it lists
         // every app with its icon; until then, the known apps the TV says it has, while the TV asks once (an answer
         // only counts from the next load on, and a "no" isn't asked again).
@@ -303,6 +312,23 @@ var TV = (function () {
         knownApps(done);
         if (!refused) ssap('com.webos.applicationManager/listLaunchPoints', function () {});
       });
+    },
+
+    /** Whether the TV lets us list all its apps (LG only): 'allowed', 'waiting' (not answered yet), 'denied', or null. */
+    listAccess: function () {
+      if (!webos) return null;
+      if (directList) return 'allowed';
+      try {
+        if (localStorage.getItem(SSAP_KEY)) return 'allowed';
+        if (localStorage.getItem(SSAP_REFUSED)) return 'denied';
+      } catch (e) {}
+      return 'waiting';
+    },
+
+    /** Forgets a "no" and asks the TV again (it shows its prompt); done() when the TV has answered or given up. */
+    askListAgain: function (done) {
+      try { localStorage.removeItem(SSAP_REFUSED); } catch (e) {}
+      ssap('com.webos.applicationManager/listLaunchPoints', function () { if (done) done(); });
     },
 
     /** Opens an app (or an input); done(ok). */
