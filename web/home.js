@@ -75,7 +75,6 @@
     ['globoplay', /globoplay/, /globoplay/i, ['#FF8A1F', '#FF2D5A']],
     ['spotify', /spotify/, /spotify/i, ['#1DB954', '#0F7A36']]
   ];
-  var MAX_SHELF = 8;
 
   function shelfKey(app) {
     for (var i = 0; i < SHELF.length; i++) if (SHELF[i][1].test(app.id) || SHELF[i][2].test(app.title)) return SHELF[i];
@@ -116,16 +115,16 @@
   function pickShelf() {
     var chosen = Prefs.shelf(), out = [];
     if (chosen) {
-      for (var i = 0; i < chosen.length && out.length < MAX_SHELF; i++) {
+      for (var i = 0; i < chosen.length; i++) {
         for (var j = 0; j < apps.length; j++) if (apps[j].id === chosen[i]) out.push(apps[j]);
       }
     } else {
-      for (var s = 0; s < SHELF.length && out.length < MAX_SHELF; s++) {
+      for (var s = 0; s < SHELF.length; s++) {
         for (var a = 0; a < apps.length; a++) {
           if ((SHELF[s][1].test(apps[a].id) || SHELF[s][2].test(apps[a].title)) && out.indexOf(apps[a]) < 0) { out.push(apps[a]); break; }
         }
       }
-      if (!out.length) out = apps.slice(0, MAX_SHELF);
+      for (var r = 0; r < apps.length; r++) if (out.indexOf(apps[r]) < 0) out.push(apps[r]);
     }
     shelf = out;
     others = apps.filter(function (x) { return shelf.indexOf(x) < 0; });
@@ -153,6 +152,7 @@
     for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.CARDS && st.card === i);
     list = $('tiles').children;
     for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.SHELF && st.shelf === i);
+    scrollShelf();
     list = document.querySelectorAll('#drawer .key');
     for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.DRAWER && st.drawer === i);
     list = document.querySelectorAll('#apps .cell');
@@ -288,30 +288,81 @@
 
   // MARK: - Shelf
 
+  // The shelf has no limit: fixed-size tiles in a strip that slides inside the fixed glass; only the tiles near the view have a face.
+  var SH = {tw: 126 * 16 / 9, th: 126, gap: 48, pad: 40, left: 40, view: 1760, shift: 0, clip: null};
+
+  function shelfStep() { return SH.tw + SH.gap; }
+
+  /** Where the strip sits (translateX in the clip) with tile i in focus: centered when it can be, never past the ends. */
+  function shelfShiftFor(i) {
+    var n = shelf.length, full = n * SH.tw + Math.max(0, n - 1) * SH.gap;
+    if (full <= SH.view) return SH.pad + (SH.view - full) / 2;
+    var s = SH.pad + SH.view / 2 - (i * shelfStep() + SH.tw / 2);
+    return Math.max(SH.pad + SH.view - full, Math.min(SH.pad, s));
+  }
+
+  /** Tile i's center on the screen, as it will be once the strip has settled (the real rect lags during the slide). */
+  function shelfCenterX(i) {
+    var r = stage.getBoundingClientRect();
+    return r.left + (SH.left + SH.shift + i * shelfStep() + SH.tw / 2) * r.width / 1920;
+  }
+
+  /** The tile whose settled center is nearest to a screen x. */
+  function nearestShelf(x) {
+    var r = stage.getBoundingClientRect(), sx = (x - r.left) * 1920 / r.width;
+    var i = Math.round((sx - SH.left - SH.shift - SH.tw / 2) / shelfStep());
+    return Math.max(0, Math.min(shelf.length - 1, i));
+  }
+
+  function fillTile(i, on) {
+    var t = $('tiles').children[i];
+    if (!t || !!t.facing === on) return;
+    t.facing = on;
+    t.innerHTML = '';
+    if (on) face(shelf[i], t, wordFit(shelf[i].title, SH.tw, 30));
+  }
+
+  function scrollShelf() {
+    var n = shelf.length;
+    if (!n) return;
+    st.shelf = Math.max(0, Math.min(n - 1, st.shelf));
+    SH.shift = shelfShiftFor(st.shelf);
+    var tiles = $('tiles');
+    tiles.style.webkitTransform = tiles.style.transform = 'translateX(' + SH.shift + 'px)';
+    var lo = Math.floor((SH.left - SH.shift) / shelfStep()) - 4, hi = Math.ceil((SH.left + 1840 - SH.shift) / shelfStep()) + 4;
+    for (var i = 0; i < n; i++) fillTile(i, i >= lo && i <= hi);
+  }
+
   function renderShelf() {
-    var n = shelf.length, gap = 48, pad = 40;
-    // 16:9 tiles, as on Android: never taller than 126, and the glass keeps its bottom edge.
-    var tw = Math.min(126 * 16 / 9, (1760 - Math.max(0, n - 1) * gap) / Math.max(1, n)), th = tw * 9 / 16;
-    var width = n * tw + Math.max(0, n - 1) * gap, left = (1920 - width) / 2;
+    var n = shelf.length;
     var platter = $('platter');
     platter.style.display = n ? '' : 'none';
-    platter.style.left = (left - pad) + 'px';
-    platter.style.width = (width + 2 * pad) + 'px';
-    platter.style.top = (814 + 126 - th) + 'px';
-    platter.style.height = (th + 2 * pad) + 'px';
-    $('quotes').style.right = (1920 - left - width) + 'px';
+    platter.style.left = SH.left + 'px';
+    platter.style.width = (SH.view + 2 * SH.pad) + 'px';
+    $('quotes').style.right = (1920 - SH.left - SH.view - 2 * SH.pad + SH.pad) + 'px';
     var tiles = $('tiles');
+    if (!SH.clip) {
+      SH.clip = document.createElement('div');
+      SH.clip.id = 'shelfclip';
+      tiles.parentNode.insertBefore(SH.clip, tiles);
+      SH.clip.appendChild(tiles);
+    }
+    SH.clip.style.display = n ? '' : 'none';
     tiles.innerHTML = '';
     for (var i = 0; i < n; i++) {
       var t = el('div', 'tile', tiles);
-      t.style.left = (left + i * (tw + gap)) + 'px';
-      t.style.top = (854 + 126 - th) + 'px';
-      t.style.width = tw + 'px';
-      t.style.height = th + 'px';
-      face(shelf[i], t, wordFit(shelf[i].title, tw, 30));
+      t.style.left = (i * shelfStep()) + 'px';
+      t.style.top = SH.pad + 'px';
+      t.style.width = SH.tw + 'px';
+      t.style.height = SH.th + 'px';
       hover(t, Z.SHELF, i);
     }
     st.shelf = Math.min(st.shelf, Math.max(0, n - 1));
+    // first paint without sliding in from the old place
+    tiles.style.webkitTransition = tiles.style.transition = 'none';
+    scrollShelf();
+    void tiles.offsetWidth;
+    tiles.style.webkitTransition = tiles.style.transition = '';
   }
 
   // MARK: - Drawer
@@ -419,16 +470,15 @@
 
   function openDrawer() {
     if (!drawerItems.length) return;
-    var tiles = $('tiles').children;
     st.zone = Z.DRAWER;
-    st.drawer = Math.min(drawerItems.length - 1, nearest(document.querySelectorAll('#drawer .key'), centerX(tiles[st.shelf])));
+    st.drawer = Math.min(drawerItems.length - 1, nearest(document.querySelectorAll('#drawer .key'), shelfCenterX(st.shelf)));
     updateFocus();
   }
 
   function closeDrawer() {
     var keys = document.querySelectorAll('#drawer .key');
     st.zone = Z.SHELF;
-    if (shelf.length) st.shelf = nearest($('tiles').children, centerX(keys[st.drawer]));
+    if (shelf.length) st.shelf = nearestShelf(centerX(keys[st.drawer]));
     updateFocus();
   }
 
@@ -584,8 +634,7 @@
     var ids = e.ids.slice(), at = ids.indexOf(app.id);
     if (dx === 0) {
       if (at >= 0) ids.splice(at, 1);
-      else if (ids.length < MAX_SHELF) ids.push(app.id);
-      else { toast(tr('A prateleira cabe até ' + MAX_SHELF + ' apps.', 'The shelf holds up to ' + MAX_SHELF + ' apps.', 'El estante tiene hasta ' + MAX_SHELF + ' apps.')); return; }
+      else ids.push(app.id);
     } else {
       if (at < 0) return;
       var to = Math.max(0, Math.min(ids.length - 1, at + dx));
@@ -658,20 +707,20 @@
   }
 
   function move(dx, dy) {
-    var tiles = $('tiles').children, cardNodes = $('cards').children;
+    var cardNodes = $('cards').children;
     switch (st.zone) {
       case Z.SHELF:
-        if (dx) st.shelf = Math.max(0, Math.min(shelf.length - 1, st.shelf + dx));
+        if (dx) { if (shelf.length > 1) st.shelf = (st.shelf + dx + shelf.length) % shelf.length; }
         else if (dy > 0) { openDrawer(); return; }
         else if (dy < 0) {
-          if (cards.length) { st.zone = Z.CARDS; st.card = nearest(cardNodes, centerX(tiles[st.shelf])); }
+          if (cards.length) { st.zone = Z.CARDS; st.card = nearest(cardNodes, shelfCenterX(st.shelf)); }
           else { st.zone = Z.TOP; st.top = st.tab; }
         }
         break;
       case Z.CARDS:
         if (dx) st.card = Math.max(0, Math.min(cards.length - 1, st.card + dx));
         else if (dy < 0) { st.zone = Z.TOP; st.top = st.tab; }
-        else if (shelf.length) { st.zone = Z.SHELF; st.shelf = nearest(tiles, centerX(cardNodes[st.card])); }
+        else if (shelf.length) { st.zone = Z.SHELF; st.shelf = nearestShelf(centerX(cardNodes[st.card])); }
         break;
       case Z.TOP:
         if (dx) {
