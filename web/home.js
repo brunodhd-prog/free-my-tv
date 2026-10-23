@@ -145,6 +145,7 @@
       setClass(list[i], 'on', i === st.tab);
       setClass(list[i], 'focus', st.zone === Z.TOP && st.top === i);
     }
+    if ($('ptitle') && tabNames[st.tab] && $('ptitle').textContent !== tabNames[st.tab]) $('ptitle').textContent = tabNames[st.tab];
     list = $('buttons').children;
     for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.TOP && st.top === 4 + i);
     setClass($('quotes'), 'hide', st.zone === Z.TOP && st.top >= 4);
@@ -192,10 +193,13 @@
 
   var TAB_KIND = [null, 'movie', 'tv', null];
 
+  var tabNames = [];
+
   function renderTop() {
     var tabs = $('tabs');
     tabs.innerHTML = '';
-    var names = [tr('Para você', 'For You', 'Para ti'), tr('Filmes', 'Movies', 'Películas'), tr('Séries', 'Shows', 'Series'), tr('Apps', 'Apps', 'Apps')];
+    if (!$('ptitle')) el('div', '', $('top')).id = 'ptitle';
+    var names = tabNames = [tr('Para você', 'For You', 'Para ti'), tr('Filmes', 'Movies', 'Películas'), tr('Séries', 'Shows', 'Series'), tr('Apps', 'Apps', 'Apps')];
     for (var i = 0; i < 4; i++) {
       var t = el('button', 'tab', tabs, names[i]);
       hover(t, Z.TOP, i);
@@ -282,7 +286,8 @@
 
   // MARK: - Rows of content
 
-  var ROW0 = 880, ROW_H = 300, STEP = 384;
+  // Layout numbers that depend on the style (Spotlight or Panels); setStyleGeo() sets them.
+  var ROW0 = 880, ROW_H = 300, STEP = 384, CL = 80, PANELS = false;
   var view = [], rowEls = [], rowF = [], rowSig = '', focusNode = null;
 
   /** The rows of the selected tab: Movies and Shows keep only their kind of item. */
@@ -313,7 +318,7 @@
       var d = el('div', 'row16', holder);
       d.style.top = (i * ROW_H) + 'px';
       el('div', 'rlabel', d, view[i].title);
-      d.strip = el('div', 'strip', d);
+      d.strip = el('div', 'strip', el('div', 'rclip', d));
       d.built = {};
       rowEls.push(d);
       rowF.push(0);
@@ -368,7 +373,7 @@
     }
     if (focusNode) { setClass(focusNode, 'focus', false); focusNode = null; }
     if (on && rowEls[st.r].built[st.col]) { focusNode = rowEls[st.r].built[st.col]; setClass(focusNode, 'focus', true); }
-    var y = on ? 760 - (ROW0 + 54 + st.r * ROW_H) : 0;
+    var y = on ? (PANELS ? 548 - (ROW0 + st.r * ROW_H) : 760 - (ROW0 + 54 + st.r * ROW_H)) : 0;
     $('page').style.webkitTransform = $('page').style.transform = y ? 'translateY(' + y + 'px)' : '';
     setClass($('shelflabel'), 'gone', on);
     setClass($('platter'), 'gone', on);
@@ -377,10 +382,10 @@
   }
 
   /** A card's center, and the card of row r nearest to a stage x. */
-  function cardX(r, c) { return 80 + (c - rowF[r]) * STEP + 180; }
+  function cardX(r, c) { return CL + (c - rowF[r]) * STEP + 180; }
   function cardNear(r, sx) {
     var f = rowF[r], n = view[r].items.length;
-    return Math.max(f, Math.min(n - 1, f + 4, f + Math.round((sx - 260) / STEP)));
+    return Math.max(f, Math.min(n - 1, f + 4, f + Math.round((sx - CL - 180) / STEP)));
   }
   function stageX(x) { var r = stage.getBoundingClientRect(); return (x - r.left) * 1920 / r.width; }
   function screenX(sx) { var r = stage.getBoundingClientRect(); return r.left + sx * r.width / 1920; }
@@ -410,7 +415,7 @@
   // MARK: - Shelf
 
   // The shelf has no limit: fixed-size tiles in a strip that slides inside the fixed glass; only the tiles near the view have a face.
-  var SH = {tw: 126 * 16 / 9, th: 126, gap: 48, pad: 40, left: 40, view: 1760, shift: 0, clip: null, pool: {}, win: 7};
+  var SH = {tw: 126 * 16 / 9, th: 126, gap: 48, pad: 40, left: 40, view: 1760, ty: 40, pl: 40, pw: 1840, shift: 0, clip: null, pool: {}, win: 7};
 
   function shelfStep() { return SH.tw + SH.gap; }
 
@@ -453,7 +458,7 @@
 
   function newTile() {
     var t = el('div', 'tile', $('tiles'));
-    t.style.top = SH.pad + 'px';
+    t.style.top = SH.ty + 'px';
     t.style.width = SH.tw + 'px';
     t.style.height = SH.th + 'px';
     hover(t, Z.SHELF, 0);
@@ -502,8 +507,8 @@
     var n = shelf.length;
     var platter = $('platter');
     platter.style.display = n ? '' : 'none';
-    platter.style.left = SH.left + 'px';
-    platter.style.width = (SH.view + 2 * SH.pad) + 'px';
+    platter.style.left = SH.pl + 'px';
+    platter.style.width = SH.pw + 'px';
     var tiles = $('tiles');
     if (!SH.clip) {
       SH.clip = document.createElement('div');
@@ -836,6 +841,36 @@
     updateFocus();
   }
 
+  // MARK: - Style: Spotlight (hero) or Panels
+
+  /** Sets the style class and the pixel numbers that the scrolling code reads. */
+  function setStyleGeo() {
+    PANELS = Prefs.style() === 'panels';
+    setClass(body, 'style-panels', PANELS);
+    ROW0 = PANELS ? 836 : 880;
+    ROW_H = PANELS ? 337 : 300;
+    CL = PANELS ? 104 : 80;
+    SH.left = PANELS ? 92 : 40;
+    SH.pad = PANELS ? 12 : 40;
+    SH.view = PANELS ? 1712 : 1760;
+    SH.ty = PANELS ? 25 : 40;
+    SH.pl = PANELS ? 80 : 40;
+    SH.pw = PANELS ? 1760 : 1840;
+  }
+
+  function applyStyle() {
+    setStyleGeo();
+    rowSig = '';
+    renderRows(true);
+    renderShelf();
+    updateFocus();
+  }
+
+  var STYLE_NAMES = {
+    hero: function () { return tr('Destaque', 'Spotlight', 'Destacado'); },
+    panels: function () { return tr('Painéis', 'Panels', 'Paneles'); }
+  };
+
   // MARK: - Home Settings
 
   var THEME_NAMES = {
@@ -855,13 +890,15 @@
   };
 
   function settingRows() {
-    var lang = Prefs.language(), unit = Prefs.temperature(), theme = Prefs.theme(), accent = Prefs.accent();
+    var lang = Prefs.language(), unit = Prefs.temperature(), theme = Prefs.theme(), accent = Prefs.accent(), style = Prefs.style();
     var auto = tr('Automático', 'Automatic', 'Automático'), on = tr('Ligado', 'On', 'Activado'), off = tr('Desligado', 'Off', 'Desactivado');
     var rows = [
       {label: tr('Idioma', 'Language', 'Idioma'), value: lang === 'ru' ? 'Русский' : lang === 'de' ? 'Deutsch' : lang === 'pt' ? 'Português' : lang === 'en' ? 'English' : lang === 'es' ? 'Español' : auto,
         step: function (d) { cycle('language', ['auto', 'de', 'en', 'es', 'pt', 'ru'], lang, d); I18N.set(Prefs.language()); renderAll(); }},
       {label: tr('Temperatura', 'Temperature', 'Temperatura'), value: unit === 'C' ? '°C' : unit === 'F' ? '°F' : auto,
         step: function (d) { cycle('temperature', ['auto', 'C', 'F'], unit, d); renderPanels(); }},
+      {label: tr('Estilo', 'Style', 'Estilo'), value: (STYLE_NAMES[style] || STYLE_NAMES.hero)(),
+        step: function (d) { cycle('style', ['hero', 'panels'], style, d); applyStyle(); }},
       {label: tr('Tema', 'Theme', 'Tema'), value: THEME_NAMES[theme] ? THEME_NAMES[theme]() : auto,
         step: function (d) { cycle('theme', ['auto', 'dark', 'oled', 'light'], theme, d); checkNight(); }},
       {label: tr('Cor de destaque', 'Accent color', 'Color de acento'), value: ACCENT_NAMES[accent] ? ACCENT_NAMES[accent]() : ACCENT_NAMES.blue(),
@@ -1294,6 +1331,7 @@
 
   I18N.set(Prefs.language());
   fit();
+  setStyleGeo();
   checkNight();
   applyAccent();
   renderTop();

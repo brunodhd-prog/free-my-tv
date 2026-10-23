@@ -47,6 +47,7 @@ var Prefs = (function () {
     temperature: function () { return pick('temperature', CONFIG.temperature || 'auto'); },
     theme: function () { return pick('theme', 'auto'); },
     accent: function () { return pick('accent', 'blue'); },
+    style: function () { return pick('style', 'hero'); },
     weather: function () { return pick('weather', true); },
     quotes: function () { return pick('quotes', CONFIG.showCrypto !== false); },
     coin: function (i) { var c = pick('coins', null); return c ? c[i] !== false : true; },

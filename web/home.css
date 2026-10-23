@@ -223,6 +223,10 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .rcard.focus .rimg { box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6); }
 .rcard.focus .rimg::after { opacity: 1; }
 
+/* The strip's clip box: invisible in the Spotlight style (see Panels at the end). */
+.rclip { position: absolute; left: 0; top: 0; width: 1920px; height: 260px; }
+#ptitle { display: none; }
+
 /* Without a TMDB key (or picks yet): the date and the time instead of the cards. */
 #clock {
   position: absolute;
@@ -590,3 +594,65 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 body:not(.night).accent-white .tab.on::after { background: #1D1D1F; }
 body:not(.night).accent-white .tile.focus, body:not(.night).accent-white .key.focus, body:not(.night).accent-white .round.focus { box-shadow: 0 16px 34px rgba(0, 0, 0, 0.42), 0 0 0 4px #1D1D1F; }
 body:not(.night).accent-white .syscard .smain:not(.hint):not(.err) { color: #1D1D1F; }
+
+/* MARK: - Style "Panels" (class style-panels on body): big title, floating status pill, content in rounded panels.
+   The Spotlight style is everything above; these rules only apply with the class. Pixel numbers match setStyleGeo() in home.js. */
+body.style-panels #ptitle { display: block; position: absolute; left: 80px; top: 26px; font-size: 72px; font-weight: 700; line-height: 84px; letter-spacing: -0.02em; white-space: nowrap; color: #1D1D1F; }
+body.style-panels.night #ptitle { color: #F5F5F7; }
+
+body.style-panels #tabs { left: 80px; top: 124px; height: 48px; }
+body.style-panels .tab { height: 48px; padding: 0 22px; margin-right: 10px; border-radius: 24px; font-size: 23px; line-height: 48px; color: #6E6E73; background: rgba(0, 0, 0, 0.05); }
+body.style-panels .tab.on { color: #1D1D1F; background: rgba(0, 0, 0, 0.12); }
+body.style-panels .tab.on::after { display: none; }
+body.style-panels .tab.focus { color: #1D1D1F; background: #FFF; }
+body.style-panels.night .tab { color: rgba(245, 245, 247, 0.7); background: rgba(255, 255, 255, 0.08); }
+body.style-panels.night .tab.on { color: #FFF; background: rgba(255, 255, 255, 0.2); }
+body.style-panels.night .tab.focus { color: #1D1D1F; background: #FFF; }
+body.style-panels.oled .tab { background: #0A0A0A; }
+body.style-panels.oled .tab.on { background: #2A2A2A; }
+body.style-panels.oled .tab.focus { background: #FFF; }
+
+/* Clock and weather in a dark floating pill. */
+body.style-panels #mini { top: 46px; height: 56px; line-height: 56px; padding: 0 30px; border-radius: 28px; font-size: 27px; color: #F5F5F7; background: rgba(20, 20, 23, 0.9); box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+body.style-panels #mini .mwx { margin-right: 22px; }
+body.style-panels #mini .mwx:empty { display: none; }
+body.style-panels #mini .mwx .sym { width: 28px; height: 28px; vertical-align: -5px; }
+body.style-panels.oled #mini { background: #0A0A0A; }
+
+/* Round buttons and quotes on the light theme (the Spotlight style forces the dark look because of the photo). */
+body.style-panels:not(.night) .round { background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.5)); background: linear-gradient(rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.5)); color: #1D1D1F; box-shadow: 0 6px 26px rgba(0, 0, 0, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.5); }
+body.style-panels:not(.night) .round.focus { background: #FFF; }
+body.style-panels:not(.night) .round.focus .tip { color: #1D1D1F; }
+body.style-panels:not(.night) #quotes { color: #6E6E73; }
+body.style-panels:not(.night) #quotes svg { fill: rgba(60, 60, 67, 0.6); }
+
+/* The featured title in a rounded panel with its photo, over the blurred background. */
+body.style-panels #hero { left: 80px; top: 196px; width: 1760px; height: 320px; border-radius: 28px; overflow: hidden; -webkit-transition: opacity 0.4s; transition: opacity 0.4s; box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28); }
+body.style-panels.drawer-open #hero { opacity: 0; }
+body.style-panels .himg { width: 1760px; height: 320px; }
+body.style-panels .hshade { width: 1760px; height: 320px; }
+body.style-panels #htext { left: 48px; top: auto; bottom: 34px; width: 900px; }
+body.style-panels #htext .ht { font-size: 50px; line-height: 56px; max-height: 112px; }
+body.style-panels #htext .hm { margin-top: 10px; font-size: 24px; line-height: 32px; }
+body.style-panels #htext .ho { margin-top: 10px; font-size: 24px; line-height: 34px; height: 68px; }
+
+/* "Your apps" and each row: a panel with its title inside. */
+body.style-panels #platter { top: 548px; height: 256px; border-radius: 28px; }
+body.style-panels #shelflabel { z-index: 1; left: 104px; top: 572px; font-size: 30px; font-weight: 700; }
+body.style-panels #shelfclip { left: 92px; top: 612px; width: 1736px; height: 176px; border-radius: 0; }
+body.style-panels #rows { top: 836px; }
+body.style-panels .row16 { left: 80px; width: 1760px; height: 305px; border-radius: 28px; }
+body.style-panels .row16 .rlabel { left: 24px; top: 22px; font-size: 30px; font-weight: 700; }
+body.style-panels .rclip { left: 0; top: 64px; width: 1760px; height: 241px; overflow: hidden; border-radius: 0 0 28px 28px; }
+body.style-panels .strip { left: 24px; top: 20px; }
+
+body.style-panels #platter, body.style-panels .row16 { background: rgba(0, 0, 0, 0.04); box-shadow: none; }
+body.style-panels.night #platter, body.style-panels.night .row16 { background: rgba(255, 255, 255, 0.06); box-shadow: none; }
+body.style-panels.oled #platter, body.style-panels.oled .row16 { background: #0A0A0A; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+body.style-panels .rlabel, body.style-panels:not(.night) #shelflabel { color: #1D1D1F; }
+body.style-panels.night .rlabel { color: #F5F5F7; }
+
+/* Straighter corners and a lighter focus: 1.06 with the accent ring. */
+body.style-panels .tile { border-radius: 14px; box-shadow: none; }
+body.style-panels .tile.focus { -webkit-transform: scale(1.06); transform: scale(1.06); }
+body.style-panels .rcard.focus { -webkit-transform: scale(1.06); transform: scale(1.06); }
