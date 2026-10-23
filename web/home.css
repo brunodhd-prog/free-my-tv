@@ -57,8 +57,6 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 #sky .grad { position: absolute; left: 0; top: 0; width: 100%; height: 100%; -webkit-transition: opacity 2s; transition: opacity 2s; }
 #sky .day { background: -webkit-linear-gradient(top, #F5F5F7, #E2E2E7); background: linear-gradient(#F5F5F7, #E2E2E7); }
 #sky .night { background: -webkit-linear-gradient(top, #1C1C1E, #0B0B0D); background: linear-gradient(#1C1C1E, #0B0B0D); opacity: 0; }
-#sky canvas { position: absolute; left: -4%; top: -4%; width: 108%; height: 108%; opacity: 0; -webkit-transition: opacity 0.8s; transition: opacity 0.8s; }
-#sky canvas.on { opacity: 1; }
 #sky .veil { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: rgba(245, 245, 247, 0.74); -webkit-transition: background-color 2s; transition: background-color 2s; }
 #sky .lift { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #FFF; opacity: 0; -webkit-transition: opacity 0.45s, background-color 2s; transition: opacity 0.45s, background-color 2s; }
 .night #sky .day { opacity: 0; }
@@ -86,24 +84,30 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 #drawer { -webkit-transform: translateY(560px); transform: translateY(560px); opacity: 0; }
 .drawer-open #drawer { -webkit-transform: none; transform: none; opacity: 1; }
 
-/* MARK: - Title and tabs */
+/* MARK: - Hero: the featured title's photo behind everything, dark on the left and at the bottom */
 
-#title {
-  position: absolute;
-  left: 76px;
-  top: 52px;
-  margin: 0;
-  font-size: 76px;
-  font-weight: 600;
-  letter-spacing: 0.004em;
-  line-height: 1;
-  white-space: nowrap;
-  color: #1D1D1F;
-  -webkit-transition: color 2s;
-  transition: color 2s;
+#hero { pointer-events: none; display: none; background: #0B0B0D; }
+.gtv #hero { display: block; }
+.himg { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background-size: cover; background-position: center; opacity: 0; -webkit-transition: opacity 0.9s; transition: opacity 0.9s; }
+.himg.on { opacity: 1; }
+.hshade {
+  position: absolute; left: 0; top: 0; width: 1920px; height: 1080px;
+  background: -webkit-linear-gradient(left, rgba(8, 8, 10, 0.9) 0%, rgba(8, 8, 10, 0.6) 38%, rgba(8, 8, 10, 0) 72%), -webkit-linear-gradient(top, rgba(8, 8, 10, 0.55) 0%, rgba(8, 8, 10, 0) 18%, rgba(8, 8, 10, 0) 42%, rgba(8, 8, 10, 0.96) 100%);
+  background: linear-gradient(to right, rgba(8, 8, 10, 0.9) 0%, rgba(8, 8, 10, 0.6) 38%, rgba(8, 8, 10, 0) 72%), linear-gradient(to bottom, rgba(8, 8, 10, 0.55) 0%, rgba(8, 8, 10, 0) 18%, rgba(8, 8, 10, 0) 42%, rgba(8, 8, 10, 0.96) 100%);
 }
+#htext { position: absolute; left: 80px; top: 236px; width: 940px; color: #FFF; -webkit-transition: opacity 0.3s; transition: opacity 0.3s; }
+#htext .ht { font-size: 76px; font-weight: 700; line-height: 84px; max-height: 168px; overflow: hidden; letter-spacing: -0.01em; text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5); }
+#htext .hm { margin-top: 18px; font-size: 28px; font-weight: 600; line-height: 36px; color: rgba(255, 255, 255, 0.85); white-space: nowrap; }
+#htext .ho { margin-top: 18px; font-size: 27px; font-weight: 400; line-height: 38px; height: 114px; overflow: hidden; color: rgba(255, 255, 255, 0.8); }
+.drawer-open #htext { opacity: 0; }
 
-#tabs { position: absolute; left: 54px; top: 158px; height: 68px; white-space: nowrap; }
+/* MARK: - Top bar: tabs at the left; weather, clock and the round buttons at the right */
+
+#top, #page { pointer-events: none; }
+#top > *, #page > * { pointer-events: auto; }
+#page { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; -webkit-transition: -webkit-transform 0.35s cubic-bezier(0.32, 0.72, 0.2, 1), opacity 0.3s; transition: transform 0.35s cubic-bezier(0.32, 0.72, 0.2, 1), opacity 0.3s; }
+
+#tabs { position: absolute; left: 54px; top: 40px; height: 68px; white-space: nowrap; }
 .tab {
   position: relative;
   display: inline-block;
@@ -126,15 +130,27 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   transform: scale(1.05);
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.22);
 }
-.night #title, .night .tab.on { color: #F5F5F7; }
+.night .tab.on { color: #F5F5F7; }
 .night .tab { color: rgba(245, 245, 247, 0.62); }
-.night .tab.focus { color: #1D1D1F; box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4); }
+.night .tab.focus, .gtv .tab.focus { color: #1D1D1F; box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4); }
+.gtv .tab { color: rgba(255, 255, 255, 0.68); }
+.gtv .tab.on { color: #FFF; }
+.gtv .tab.focus { color: #1D1D1F; }
+
+#mini { position: absolute; right: 360px; top: 40px; height: 68px; line-height: 68px; font-size: 30px; font-weight: 500; white-space: nowrap; text-align: right; color: #1D1D1F; font-feature-settings: 'tnum'; }
+#mini .mwx { margin-right: 28px; }
+#mini .mwx .sym { width: 30px; height: 30px; vertical-align: -5px; margin-right: 8px; }
+.night #mini, .gtv #mini { color: #F5F5F7; }
+
+.rlabel { position: absolute; left: 80px; font-size: 30px; font-weight: 600; line-height: 40px; color: #1D1D1F; white-space: nowrap; }
+.night .rlabel, .gtv .rlabel { color: #F5F5F7; }
+#shelflabel { top: 590px; }
 
 /* Crypto quotes at the right end of the tab row: a quiet detail. */
 #quotes {
   position: absolute;
   right: 80px;
-  top: 178px;
+  top: 120px;
   height: 28px;
   font-size: 21px;
   line-height: 28px;
@@ -147,13 +163,13 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 #quotes .q { display: inline-block; margin-left: 24px; }
 #quotes svg { width: 15px; height: 15px; vertical-align: -1px; margin-right: 6px; fill: rgba(142, 142, 147, 0.7); }
 #quotes.hide { opacity: 0; }
-.night #quotes { color: rgba(245, 245, 247, 0.62); }
+.gtv #quotes, .night #quotes { color: rgba(245, 245, 247, 0.62); }
 .night #quotes svg { fill: rgba(245, 245, 247, 0.55); }
 
 /* Live TV, HDMI Inputs and Settings: glass circles; the focused one turns white, with its name below. */
 .round {
   position: absolute;
-  top: 69px;
+  top: 40px;
   width: 68px;
   height: 68px;
   border-radius: 34px;
@@ -182,87 +198,30 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 }
 .round.last .tip { left: auto; right: -10px; margin-left: 0; text-align: right; }
 .round.focus .tip { opacity: 1; }
-.night .round {
+.night .round, .gtv .round {
   background: -webkit-linear-gradient(top, rgba(40, 40, 44, 0.8), rgba(17, 17, 19, 0.62));
   background: linear-gradient(rgba(40, 40, 44, 0.8), rgba(17, 17, 19, 0.62));
   box-shadow: 0 6px 26px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.92);
 }
-.night .round.focus { background: #FFF; color: #1D1D1F; }
-.night .round.focus .tip { color: #F5F5F7; }
+.night .round.focus, .gtv .round.focus { background: #FFF; color: #1D1D1F; }
+.night .round.focus .tip, .gtv .round.focus .tip { color: #F5F5F7; }
 
-/* MARK: - Picks: a wide card and two tall ones; focused, a card grows 5%, rises and its edge lights up. */
+/* MARK: - Content rows: 16:9 cards, each row slides sideways, the whole page slides up */
 
-.card {
-  position: absolute;
-  top: 262px;
-  height: 442px;
-  -webkit-transition: -webkit-transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.15);
-  transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.15);
-}
-.card .img {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 18px;
-  overflow: hidden;
-  background-color: #DADADF;
-  background-size: cover;
-  background-position: center;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
-  -webkit-transition: box-shadow 0.32s;
-  transition: box-shadow 0.32s;
-}
-.card .img::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: 18px;
-  box-shadow: inset 0 0 0 2.5px rgba(255, 255, 255, 0.85);
-  background: -webkit-linear-gradient(-60deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 55%);
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 55%);
-  opacity: 0;
-  -webkit-transition: opacity 0.25s;
-  transition: opacity 0.25s;
-}
-.card.focus { -webkit-transform: translateY(-6px) scale(1.05); transform: translateY(-6px) scale(1.05); z-index: 2; }
-.card.focus .img { box-shadow: 0 24px 46px rgba(0, 0, 0, 0.34); }
-.card.focus .img::after { opacity: 1; }
-.card .name {
-  position: absolute;
-  left: 0;
-  top: 464px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 31px;
-  font-weight: 600;
-  letter-spacing: 0.012em;
-  color: #1D1D1F;
-  -webkit-transition: color 2s;
-  transition: color 2s;
-}
-.card .meta {
-  position: absolute;
-  left: 0;
-  top: 506px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 25px;
-  font-weight: 500;
-  color: #6E6E73;
-}
-.night .card .img { background-color: #2C2C2E; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32); }
-.night .card .name { color: #F5F5F7; }
-.night .card .meta { color: rgba(245, 245, 247, 0.62); }
+#rows { position: absolute; left: 0; top: 880px; width: 1920px; }
+.row16 { position: absolute; left: 0; width: 1920px; height: 260px; -webkit-transition: opacity 0.3s; transition: opacity 0.3s; }
+.row16 .rlabel { top: 0; }
+.row16.past { opacity: 0; }
+.gone { opacity: 0; }
+.strip { position: absolute; left: 80px; top: 54px; width: 1px; height: 203px; -webkit-transition: -webkit-transform 0.3s ease-out; transition: transform 0.3s ease-out; }
+.rcard { position: absolute; top: 0; width: 360px; height: 203px; -webkit-transition: -webkit-transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.15); transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.15); }
+.rcard .rimg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 14px; overflow: hidden; background-color: #2C2C2E; background-size: cover; background-position: center; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); }
+.rcard .rimg::after { content: ''; position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 14px; box-shadow: inset 0 0 0 4px #FFF; opacity: 0; -webkit-transition: opacity 0.2s; transition: opacity 0.2s; }
+.rcard .rname { position: absolute; left: 0; right: 0; bottom: 0; padding: 36px 16px 12px; border-radius: 0 0 14px 14px; font-size: 24px; font-weight: 600; line-height: 30px; color: #FFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; background: -webkit-linear-gradient(top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.78)); background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.78)); }
+.rcard.focus { -webkit-transform: scale(1.08); transform: scale(1.08); z-index: 2; }
+.rcard.focus .rimg { box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6); }
+.rcard.focus .rimg::after { opacity: 1; }
 
 /* Without a TMDB key (or picks yet): the date and the time instead of the cards. */
 #clock {
@@ -277,7 +236,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   display: none;
 }
 #clock .date { display: block; font-size: 40px; font-weight: 500; letter-spacing: 0; margin-top: 18px; color: #6E6E73; }
-.no-picks #clock { display: block; }
+.no-rows #clock { display: block; }
 .night #clock { color: #F5F5F7; }
 .night #clock .date { color: rgba(245, 245, 247, 0.62); }
 
@@ -285,14 +244,14 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 #platter {
   position: absolute;
-  top: 814px;
+  top: 640px;
   height: 206px;
   border-radius: 62px;
   background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.4));
   background: linear-gradient(rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.4));
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.12), inset 0 1.5px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.55);
 }
-.night #platter {
+.night #platter, .gtv #platter {
   background: -webkit-linear-gradient(top, rgba(34, 34, 38, 0.72), rgba(17, 17, 19, 0.6));
   background: linear-gradient(rgba(34, 34, 38, 0.72), rgba(17, 17, 19, 0.6));
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32), inset 0 1.5px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
@@ -301,7 +260,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 #shelfclip {
   position: absolute;
   left: 40px;
-  top: 814px;
+  top: 640px;
   width: 1840px;
   height: 206px;
   overflow: hidden;
