@@ -490,6 +490,152 @@ var Data = (function () {
     return out;
   }
 
+  // MARK: - Rows (Google TV style shelves)
+
+  var ROWS_KEY = 'fmt.rows.v1', ROWS_TTL = 3600000;
+  var rowsCache = {at: 0, lang: '', stamp: '', rows: []}, fetchingRows = false, rowsFailedAt = 0;
+  try {
+    var savedRows = JSON.parse(localStorage.getItem(ROWS_KEY));
+    if (savedRows && savedRows.rows && savedRows.rows.length !== undefined) rowsCache = savedRows;
+  } catch (e) {}
+
+  function saveRows() { try { localStorage.setItem(ROWS_KEY, JSON.stringify(rowsCache)); } catch (e) {} }
+
+  // At most 4 TMDB requests at once.
+  var queued = [], running = 0;
+  function queueGet(path, done) {
+    queued.push({path: path, done: done});
+    pump();
+  }
+  function pump() {
+    while (running < 4 && queued.length) {
+      (function (job) {
+        running++;
+        tmdb(job.path, function (err, body) {
+          running--;
+          try { job.done(err, body); } catch (e) {}
+          pump();
+        });
+      })(queued.shift());
+    }
+  }
+
+  function rowItem(o, kind, app, name) {
+    var date = (kind === 'movie' ? o.release_date : o.first_air_date) || '';
+    return {
+      id: o.id, kind: kind, title: (kind === 'movie' ? o.title : o.name) || '', overview: o.overview || '',
+      year: date.slice(0, 4), rating: Math.round((o.vote_average || 0) * 10) / 10,
+      backdrop: o.backdrop_path, poster: o.poster_path || '', app: app || '', service: name || ''
+    };
+  }
+
+  function rowList(res, kind, app, name) {
+    var out = [], seen = {};
+    for (var i = 0; res && res.results && i < res.results.length; i++) {
+      var o = res.results[i];
+      if (!o.backdrop_path || seen[o.id]) continue;
+      if (CONFIG.hideAnimation && animated(o)) continue;
+      seen[o.id] = true;
+      out.push(rowItem(o, kind, app, name));
+    }
+    return out;
+  }
+
+  function rowsStamp() { return sourceStamp() + ':' + I18N.lang + ':' + lang(); }
+
+  function refreshRows() {
+    if (!KEY || fetchingRows || !installed.length) return;
+    var t = Date.now(), st = rowsStamp();
+    var fresh = rowsCache.stamp === st && rowsCache.rows.length && t - rowsCache.at < ROWS_TTL && t >= rowsCache.at;
+    if (fresh || (rowsFailedAt && t - rowsFailedAt < 10 * 60000 && t >= rowsFailedAt)) return;
+    fetchingRows = true;
+    queueGet('/watch/providers/movie?language=' + lang() + '&watch_region=' + REGION, function (err, res) {
+      var svcs = [], byKey = {}, all = [];
+      for (var i = 0; !err && res && res.results && i < res.results.length; i++) {
+        var s = service(res.results[i].provider_name);
+        if (!s || !appFor(s[1])) continue;
+        all.push(res.results[i].provider_id);
+        if (!byKey[s[1]]) { byKey[s[1]] = {key: s[1], name: s[4], ids: []}; svcs.push(byKey[s[1]]); }
+        byKey[s[1]].ids.push(res.results[i].provider_id);
+      }
+      if (err || !all.length) { fetchingRows = false; rowsFailedAt = Date.now(); return; }
+      var order = {};
+      for (var o = 0; o < SERVICES.length; o++) order[SERVICES[o][1]] = o;
+      svcs.sort(function (a, b) { return order[a.key] - order[b.key]; });
+
+      var common = '&language=' + lang() + '&watch_region=' + REGION + '&with_watch_monetization_types=flatrate&include_adult=false'
+          + '&sort_by=popularity.desc' + (CONFIG.hideAnimation ? '&without_genres=' + ANIMATION : '');
+      var got = {}, pending = 0, owner = {};
+      function discover(slot, kind, ids, extra, app, name) {
+        pending++;
+        var q = '/discover/' + kind + '?with_watch_providers=' + encodeURIComponent(ids.join('|')) + common + extra;
+        queueGet(q, function (e, r) {
+          got[slot] = e ? [] : rowList(r, kind, app, name);
+          if (--pending === 0) assemble();
+        });
+      }
+      var newMovie = '&primary_release_date.gte=' + day(-90) + '&primary_release_date.lte=' + day(0);
+      var newTv = '&first_air_date.gte=' + day(-90) + '&first_air_date.lte=' + day(0);
+      discover('hotM', 'movie', all, '', '', '');
+      discover('hotT', 'tv', all, '', '', '');
+      discover('newM', 'movie', all, newMovie, '', '');
+      discover('newT', 'tv', all, newTv, '', '');
+      for (var k = 0; k < svcs.length; k++) {
+        discover('m' + svcs[k].key, 'movie', svcs[k].ids, '', svcs[k].key, svcs[k].name);
+        discover('t' + svcs[k].key, 'tv', svcs[k].ids, '', svcs[k].key, svcs[k].name);
+      }
+
+      function assemble() {
+        var rows = [], j, n;
+        // Which service has each title, from the per-service lists (first one wins).
+        for (j = 0; j < svcs.length; j++) {
+          var both = (got['m' + svcs[j].key] || []).concat(got['t' + svcs[j].key] || []);
+          for (n = 0; n < both.length; n++) if (!owner[keyOf(both[n])]) owner[keyOf(both[n])] = svcs[j];
+        }
+        function mixed(a, b) {
+          var out = [], seen = {};
+          alternate(out, seen, a || [], b || [], 20);
+          for (var x = 0; x < out.length; x++) {
+            var w = owner[keyOf(out[x])];
+            out[x] = rowItem({id: out[x].id, overview: out[x].overview, vote_average: out[x].rating, backdrop_path: out[x].backdrop,
+              poster_path: out[x].poster, title: out[x].title, name: out[x].title,
+              release_date: out[x].year, first_air_date: out[x].year}, out[x].kind, w ? w.key : '', w ? w.name : '');
+          }
+          return out;
+        }
+        var hot = mixed(got.hotM, got.hotT), fresh = mixed(got.newM, got.newT);
+        if (hot.length) rows.push({id: 'trending', title: tr('Em alta', 'Trending', 'Tendencias'), items: hot});
+        if (fresh.length) rows.push({id: 'new', title: tr('Lançamentos', 'New releases', 'Estrenos'), items: fresh});
+        for (j = 0; j < svcs.length; j++) {
+          var items = [], seen = {};
+          alternate(items, seen, got['m' + svcs[j].key] || [], got['t' + svcs[j].key] || [], 20);
+          if (items.length) rows.push({id: 'svc-' + svcs[j].key, title: tr('Em ' + svcs[j].name, 'On ' + svcs[j].name, 'En ' + svcs[j].name), items: items});
+        }
+        fetchingRows = false;
+        if (!rows.length) { rowsFailedAt = Date.now(); return; }
+        rowsFailedAt = 0;
+        rowsCache = {at: Date.now(), lang: I18N.lang, stamp: st, rows: rows};
+        saveRows();
+        changed();
+      }
+    });
+  }
+
+  /** The shelves from memory: only titles on apps that are installed on this TV. */
+  function rows() {
+    var out = [];
+    if (!KEY || !installed.length) return out;
+    for (var i = 0; i < rowsCache.rows.length; i++) {
+      var r = rowsCache.rows[i], items = [];
+      for (var j = 0; j < r.items.length; j++) {
+        var it = r.items[j];
+        if (!it.app || appFor(it.app)) items.push(it);
+      }
+      if (items.length) out.push({id: r.id, title: r.title, items: items});
+    }
+    return out;
+  }
+
   // MARK: - Formatting
 
   function fmt(v, digits) {
@@ -505,7 +651,8 @@ var Data = (function () {
     onChange: function (fn) { listeners.push(fn); },
     setApps: function (apps) { installed = apps; },
     appFor: appFor,
-    refresh: function () { refreshWeather(); refreshPrices(); refreshRecs(); },
+    refresh: function () { refreshWeather(); refreshPrices(); refreshRecs(); refreshRows(); },
+    rows: rows,
     settingsChanged: function () { pricesAt = 0; refreshPrices(); changed(); },
     get weather() { return weather; },
     get weatherAt() { return weatherAt; },
