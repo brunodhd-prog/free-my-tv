@@ -1,0 +1,46 @@
+# Builds the LG webOS package (FreeMyTV-webos.ipk) in the cloud, with no keys or secrets.
+# On main, the build also refreshes the "latest-webos" release, so the .ipk always has a stable link.
+name: Build webOS
+
+on:
+  push:
+    branches: [main, "br-*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: webos-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Build FreeMyTV-webos.ipk
+        run: python3 webos/build.py --generic
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: FreeMyTV-webos
+          path: FreeMyTV-webos.ipk
+          if-no-files-found: error
+
+      - name: Update the latest-webos release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-webos
+          name: Free My TV for LG webOS (latest)
+          body: Built from main. Install FreeMyTV-webos.ipk on the TV with Developer Mode.
+          files: FreeMyTV-webos.ipk
+          fail_on_unmatched_files: true
+          overwrite_files: true
+          make_latest: false
