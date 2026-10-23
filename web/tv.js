@@ -349,6 +349,23 @@ var TV = (function () {
       });
     },
 
+    /** The network: done({type: 'wifi'|'wired', ip, ssid}) on LG, null elsewhere or on error. */
+    network: function (done) {
+      if (!webos) { setTimeout(function () { done(null); }, 0); return; }
+      luna('luna://com.webos.service.connectionmanager/getStatus', {}, function (res) {
+        var out = null;
+        if (res) {
+          var w = res.wired, f = res.wifi;
+          if (w && w.state === 'connected') out = {type: 'wired', ip: w.ipAddress || ''};
+          else if (f && f.state === 'connected') {
+            out = {type: 'wifi', ip: f.ipAddress || ''};
+            if (f.ssid) out.ssid = f.ssid;
+          }
+        }
+        done(out);
+      });
+    },
+
     /** The TV's own settings; done(ok). */
     settings: function (done) {
       if (samsung) samsungSettings(done);

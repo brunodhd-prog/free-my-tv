@@ -501,3 +501,19 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 /* The Magic Remote's pointer: no text selection, no outlines. */
 * { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+/* System card in the drawer */
+.panel.focus { background: #F5F5F7; -webkit-transform: scale(1.03); transform: scale(1.03); box-shadow: 0 16px 34px rgba(0, 0, 0, 0.42); z-index: 2; }
+.syscard { -webkit-transition: -webkit-transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2), box-shadow 0.28s, background-color 0.2s; transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2), box-shadow 0.28s, background-color 0.2s; }
+.night .panel.focus { color: #1C1C1E; }
+.night .panel.focus .head { color: #6E6E73; }
+.syscard .snet { position: absolute; left: 34px; right: 34px; top: 80px; font-size: 25px; font-weight: 500; white-space: nowrap; font-feature-settings: 'tnum'; }
+.syscard .smain { position: absolute; left: 34px; right: 34px; top: 124px; font-size: 27px; font-weight: 600; line-height: 34px; font-feature-settings: 'tnum'; }
+.syscard .smain.hint { font-size: 23px; font-weight: 500; color: #6E6E73; }
+.syscard .smain.err { font-size: 22px; font-weight: 500; line-height: 29px; color: #C0392B; }
+.syscard .ssub { position: absolute; left: 34px; right: 34px; top: 174px; font-size: 21px; font-weight: 500; color: #6E6E73; white-space: nowrap; }
+.syscard .sfps { position: absolute; left: 34px; right: 34px; bottom: 28px; font-size: 22px; font-weight: 500; color: #6E6E73; white-space: nowrap; font-feature-settings: 'tnum'; }
+.night .syscard .smain.hint, .night .syscard .ssub, .night .syscard .sfps { color: rgba(255, 255, 255, 0.68); }
+.night .syscard .smain.err { color: #FF8A7A; }
+.night .syscard.focus .smain.hint, .night .syscard.focus .ssub, .night .syscard.focus .sfps { color: #6E6E73; }
+.night .syscard.focus .smain.err { color: #C0392B; }

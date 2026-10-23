@@ -152,7 +152,7 @@
     scrollShelf();
     list = $('tiles').children;
     for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.SHELF && list[i].k === st.shelfPos);
-    list = document.querySelectorAll('#drawer .key');
+    list = drawerNodes();
     for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.DRAWER && st.drawer === i);
     list = document.querySelectorAll('#apps .cell');
     for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.APPS && st.grid === i);
@@ -161,6 +161,7 @@
     focusRows($('settings'), st.row, st.zone === Z.SETTINGS);
     focusRows($('shelfedit'), st.edit, st.zone === Z.EDIT);
     setClass(body, 'drawer-open', st.zone === Z.DRAWER);
+    fpsSync(st.zone === Z.DRAWER);
   }
 
   function focusRows(sheet, index, on) {
@@ -555,8 +556,14 @@
       hover(key, Z.DRAWER, k);
       xPos += tw + gap;
     }
+    drawerItems.push({label: tr('Sistema', 'System', 'Sistema'), panel: true, run: runSpeed});
     renderPanels();
     updateFocus();
+  }
+
+  /** The drawer's focusable things in order: the keys, then the System card. */
+  function drawerNodes() {
+    return document.querySelectorAll('#drawer .key, #drawer .syscard');
   }
 
   function renderPanels() {
@@ -564,12 +571,12 @@
     var old = d.querySelectorAll('.panel');
     for (var o = 0; o < old.length; o++) d.removeChild(old[o]);
     var wx = Prefs.weather(), coins = Data.activeCoins(), qt = coins.length > 0;
-    var split = 80 + 1760 * 0.585;
+    var sysW = 420, end = 1840 - sysW - 16, split = 80 + (end - 80) * 0.55;
     if (wx) {
       var w = el('div', 'panel glass', d);
       w.id = 'weather';
       w.style.left = '80px';
-      w.style.width = ((qt ? split - 16 : 1840) - 80) + 'px';
+      w.style.width = ((qt ? split - 16 : end) - 80) + 'px';
       renderWeather(w);
     }
     if (qt) {
@@ -577,8 +584,164 @@
       q.id = 'prices';
       var left = wx ? split + 16 : 80;
       q.style.left = left + 'px';
-      q.style.width = (1840 - left) + 'px';
+      q.style.width = (end - left) + 'px';
       renderPrices(q, coins);
+    }
+    var sc = el('div', 'panel glass syscard', d);
+    sc.id = 'system';
+    sc.style.left = (1840 - sysW) + 'px';
+    sc.style.width = sysW + 'px';
+    hover(sc, Z.DRAWER, drawerItems.length - 1);
+    renderSystem(sc);
+  }
+
+  // MARK: - System card: speed test, interface smoothness, network
+
+  var SPEED_KEY = 'fmt.speed.v1';
+  var sys = {running: false, live: '', last: null, error: false, net: undefined, fps: 0, nodes: null};
+  try { sys.last = JSON.parse(localStorage.getItem(SPEED_KEY)); } catch (e) { sys.last = null; }
+  if (!sys.last || typeof sys.last.down !== 'number') sys.last = null;
+
+  function now() { return window.performance && performance.now ? performance.now() : Date.now(); }
+
+  function renderSystem(card) {
+    el('div', 'head', card, tr('Sistema', 'System', 'Sistema'));
+    sys.nodes = {
+      net: el('div', 'snet', card),
+      main: el('div', 'smain', card),
+      sub: el('div', 'ssub', card),
+      fps: el('div', 'sfps', card)
+    };
+    sysPaint();
+    TV.network(function (n) { sys.net = n; sysPaint(); });
+  }
+
+  function sysPaint() {
+    var n = sys.nodes;
+    if (!n || !n.main.parentNode) return;
+    var net = sys.net, main = '', sub = '';
+    n.net.textContent = net && net.type ? (net.type === 'wired' ? tr('Cabo', 'Wired', 'Cable') : 'Wi-Fi') + (net.ip ? ' \u00B7 ' + net.ip : '') : '';
+    if (sys.running) {
+      main = tr('Testando\u2026', 'Testing\u2026', 'Probando\u2026') + (sys.live ? ' ' + sys.live : '');
+    } else if (sys.error) {
+      main = tr('N\u00E3o foi poss\u00EDvel medir (sem internet ou bloqueado)', 'Could not measure (no internet or blocked)', 'No se pudo medir (sin internet o bloqueado)');
+      n.main.className = 'smain err';
+    } else if (sys.last) {
+      main = '\u2193 ' + Math.round(sys.last.down) + ' Mbps' + (sys.last.ping != null ? ' \u00B7 ping ' + Math.round(sys.last.ping) + ' ms' : '');
+      sub = tr('Medido \u00E0s ', 'Measured at ', 'Medido a las ') + Data.time(sys.last.at);
+    } else {
+      main = tr('Aperte OK para medir a velocidade', 'Press OK to test your speed', 'Pulsa OK para medir la velocidad');
+      n.main.className = 'smain hint';
+    }
+    if (!sys.error && !(!sys.running && !sys.last)) n.main.className = 'smain';
+    if (n.main.textContent !== main) n.main.textContent = main;
+    n.sub.textContent = sub;
+    n.fps.textContent = sys.fps ? tr('Fluidez da interface: ', 'Interface smoothness: ', 'Fluidez de la interfaz: ') + sys.fps + ' fps' : '';
+  }
+
+  function median(a) {
+    a.sort(function (x, y) { return x - y; });
+    var m = a.length >> 1;
+    return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+  }
+
+  function mbps(bytes, ms) { return ms > 0 ? bytes * 8 / (ms / 1000) / 1e6 : 0; }
+
+  function runSpeed() {
+    if (sys.running) return;
+    sys.running = true;
+    sys.error = false;
+    sys.live = '';
+    sysPaint();
+    var fail = function () {
+      sys.running = false;
+      sys.error = true;
+      sysPaint();
+    };
+    var pings = [], n = 0;
+    var one = function () {
+      var x = new XMLHttpRequest(), t0 = now(), over = false;
+      var next = function (ok) {
+        if (over) return;
+        over = true;
+        if (ok) pings.push(now() - t0);
+        n++;
+        if (n < 5) one();
+        else if (!pings.length) fail();
+        else download(median(pings));
+      };
+      try {
+        x.open('GET', 'https://speed.cloudflare.com/__down?bytes=0&r=' + new Date().getTime() + n, true);
+        x.timeout = 5000;
+        x.onload = function () { next(x.status >= 200 && x.status < 300); };
+        x.onerror = x.ontimeout = x.onabort = function () { next(false); };
+        x.send();
+      } catch (e) { next(false); }
+    };
+    var download = function (ping) {
+      var x = new XMLHttpRequest(), t0 = now(), done = false, baseT = -1, baseB = 0, lastB = 0, lastT = 0, timer = 0;
+      var speed = function () {
+        if (baseT >= 0 && lastT > baseT) return mbps(lastB - baseB, lastT - baseT);
+        return mbps(lastB, lastT);
+      };
+      var finish = function () {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        var v = speed();
+        if (!(v > 0)) { fail(); return; }
+        sys.last = {down: v, ping: ping, at: new Date().getTime()};
+        try { localStorage.setItem(SPEED_KEY, JSON.stringify(sys.last)); } catch (e) {}
+        sys.running = false;
+        sysPaint();
+      };
+      var bad = function () { if (lastB > 0) finish(); else if (!done) { done = true; clearTimeout(timer); fail(); } };
+      try {
+        x.open('GET', 'https://speed.cloudflare.com/__down?bytes=25000000', true);
+        x.responseType = 'arraybuffer';
+        x.onprogress = function (e) {
+          if (done) return;
+          lastB = e.loaded;
+          lastT = now() - t0;
+          if (baseT < 0 && lastT >= 1000) { baseT = lastT; baseB = lastB; }
+          var v = speed();
+          sys.live = v > 0 ? (v >= 10 ? Math.round(v) : Math.round(v * 10) / 10) + ' Mbps' : '';
+          sysPaint();
+        };
+        x.onload = function () { if (!lastB && x.response && x.response.byteLength) { lastB = x.response.byteLength; lastT = now() - t0; } finish(); };
+        x.onerror = x.ontimeout = x.onabort = bad;
+        timer = setTimeout(function () { bad(); try { x.abort(); } catch (e) {} }, 8000);
+        x.send();
+      } catch (e) { bad(); }
+    };
+    one();
+  }
+
+  // Interface smoothness: frames per second over the last second, only while the drawer is open.
+  var fpsRaf = 0, fpsFrames = 0, fpsStart = 0;
+  var raf = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
+  var caf = window.cancelAnimationFrame || window.webkitCancelAnimationFrame;
+
+  function fpsTick(t) {
+    fpsRaf = raf(fpsTick);
+    fpsFrames++;
+    var dt = t - fpsStart;
+    if (dt >= 1000) {
+      var f = Math.round(fpsFrames * 1000 / dt);
+      fpsFrames = 0;
+      fpsStart = t;
+      if (f !== sys.fps) { sys.fps = f; sysPaint(); }
+    }
+  }
+
+  function fpsSync(on) {
+    if (on && !fpsRaf && raf) {
+      fpsFrames = 0;
+      fpsStart = now();
+      fpsRaf = raf(function (t) { fpsStart = t; fpsRaf = raf(fpsTick); });
+    } else if (!on && fpsRaf) {
+      if (caf) caf(fpsRaf);
+      fpsRaf = 0;
     }
   }
 
@@ -596,8 +759,8 @@
     el('div', 'range', card, I18N.lang === 'ru' ? 'Макс. ' + Data.degrees(w.max) + '   Мин. ' + Data.degrees(w.min) : tr('Máx. ' + Data.degrees(w.max) + '   Mín. ' + Data.degrees(w.min), 'H:' + Data.degrees(w.max) + '   L:' + Data.degrees(w.min),
         'Máx. ' + Data.degrees(w.max) + '   Mín. ' + Data.degrees(w.min)));
     el('div', 'split', card);
-    var hours = el('div', 'hours', card), width = parseFloat(card.style.width) - 30 - 422, hw = width / 6;
-    for (var i = 0; i < w.hours.length && i < 6; i++) {
+    var hours = el('div', 'hours', card), width = parseFloat(card.style.width) - 30 - 422, hn = Math.max(1, Math.min(6, Math.floor(width / 62))), hw = width / hn;
+    for (var i = 0; i < w.hours.length && i < hn; i++) {
       var h = el('div', 'hour', hours), x = w.hours[i];
       h.style.left = (hw * i) + 'px';
       h.style.width = hw + 'px';
@@ -629,11 +792,12 @@
     if (!drawerItems.length) return;
     st.zone = Z.DRAWER;
     st.drawer = Math.min(drawerItems.length - 1, nearest(document.querySelectorAll('#drawer .key'), shelfCenterX(st.shelfPos)));
+    TV.network(function (n) { sys.net = n; sysPaint(); });
     updateFocus();
   }
 
   function closeDrawer() {
-    var keys = document.querySelectorAll('#drawer .key');
+    var keys = drawerNodes();
     st.zone = Z.SHELF;
     if (shelf.length) st.shelfPos = nearestShelf(centerX(keys[st.drawer]));
     updateFocus();
