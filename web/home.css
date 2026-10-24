@@ -2,8 +2,8 @@
  * The home screen on a 1920 × 1080 stage, with the Android app's measurements (HomeView): the title and tabs at the top
  * left, icon-only glass buttons at the top right, three picks, and the glass shelf at the bottom; ↓ on the shelf opens
  * the drawer (inputs, shortcuts, weather, prices). Light by day, dark from sunset to sunrise.
- * No CSS variables, grid or backdrop-filter: older LG TVs (webOS 3 and 4) don't have them, and blur is too heavy for
- * their GPUs. Only transform and opacity animate.
+ * No CSS variables or grid: older LG TVs (webOS 3 and 4) don't have them. No backdrop-filter either, except in the
+ * Glass style at the end, inside @supports. Only transform and opacity animate.
  */
 @font-face {
   font-family: 'Inter';
@@ -656,3 +656,232 @@ body.style-panels.night .rlabel { color: #F5F5F7; }
 body.style-panels .tile { border-radius: 14px; box-shadow: none; }
 body.style-panels .tile.focus { -webkit-transform: scale(1.06); transform: scale(1.06); }
 body.style-panels .rcard.focus { -webkit-transform: scale(1.06); transform: scale(1.06); }
+
+/* MARK: - Style "Glass" (class style-glass on body; it also carries style-panels, so it shares the Panels geometry).
+   Frosted surfaces over the featured photo. This is the only place with backdrop-filter, and only inside @supports:
+   TVs without it (older webOS and Tizen) get the same panels with more opaque backgrounds. The blur sits on big, still
+   surfaces (panels, bar, pills, sheets), never on each card. Only transform and opacity animate. */
+#aurora { display: none; position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; }
+#aurora .ab { position: absolute; width: 1300px; height: 1300px; border-radius: 650px; opacity: 0.7; }
+#aurora .ab1 { left: -380px; top: -420px; -webkit-animation: auroraA 38s ease-in-out infinite alternate; animation: auroraA 38s ease-in-out infinite alternate; }
+#aurora .ab2 { left: 820px; top: 40px; -webkit-animation: auroraB 46s ease-in-out infinite alternate; animation: auroraB 46s ease-in-out infinite alternate; }
+#aurora .ab3 { left: 160px; top: 420px; -webkit-animation: auroraC 54s ease-in-out infinite alternate; animation: auroraC 54s ease-in-out infinite alternate; }
+@-webkit-keyframes auroraA { from { -webkit-transform: translate(0, 0) scale(1); opacity: 0.6; } to { -webkit-transform: translate(300px, 200px) scale(1.2); opacity: 0.85; } }
+@keyframes auroraA { from { transform: translate(0, 0) scale(1); opacity: 0.6; } to { transform: translate(300px, 200px) scale(1.2); opacity: 0.85; } }
+@-webkit-keyframes auroraB { from { -webkit-transform: translate(0, 0) scale(1.15); opacity: 0.8; } to { -webkit-transform: translate(-340px, 160px) scale(0.9); opacity: 0.55; } }
+@keyframes auroraB { from { transform: translate(0, 0) scale(1.15); opacity: 0.8; } to { transform: translate(-340px, 160px) scale(0.9); opacity: 0.55; } }
+@-webkit-keyframes auroraC { from { -webkit-transform: translate(0, 0) scale(0.95); opacity: 0.55; } to { -webkit-transform: translate(380px, -180px) scale(1.25); opacity: 0.8; } }
+@keyframes auroraC { from { transform: translate(0, 0) scale(0.95); opacity: 0.55; } to { transform: translate(380px, -180px) scale(1.25); opacity: 0.8; } }
+@-webkit-keyframes glassSweep { 0% { -webkit-transform: translateX(-130%) skewX(-20deg); opacity: 0; } 20% { opacity: 1; } 100% { -webkit-transform: translateX(460%) skewX(-20deg); opacity: 0; } }
+@keyframes glassSweep { 0% { transform: translateX(-130%) skewX(-20deg); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateX(460%) skewX(-20deg); opacity: 0; } }
+.accent-blue #aurora .ab1 { background: radial-gradient(circle, rgba(61, 139, 255, 0.8), rgba(61, 139, 255, 0) 66%); }
+.accent-blue #aurora .ab2 { background: radial-gradient(circle, rgba(120, 190, 255, 0.7), rgba(120, 190, 255, 0) 66%); }
+.accent-blue #aurora .ab3 { background: radial-gradient(circle, rgba(90, 90, 255, 0.7), rgba(90, 90, 255, 0) 66%); }
+.accent-green #aurora .ab1 { background: radial-gradient(circle, rgba(47, 209, 88, 0.8), rgba(47, 209, 88, 0) 66%); }
+.accent-green #aurora .ab2 { background: radial-gradient(circle, rgba(120, 235, 160, 0.7), rgba(120, 235, 160, 0) 66%); }
+.accent-green #aurora .ab3 { background: radial-gradient(circle, rgba(40, 190, 200, 0.7), rgba(40, 190, 200, 0) 66%); }
+.accent-purple #aurora .ab1 { background: radial-gradient(circle, rgba(166, 108, 255, 0.8), rgba(166, 108, 255, 0) 66%); }
+.accent-purple #aurora .ab2 { background: radial-gradient(circle, rgba(215, 160, 255, 0.7), rgba(215, 160, 255, 0) 66%); }
+.accent-purple #aurora .ab3 { background: radial-gradient(circle, rgba(255, 90, 190, 0.7), rgba(255, 90, 190, 0) 66%); }
+.accent-orange #aurora .ab1 { background: radial-gradient(circle, rgba(255, 138, 31, 0.8), rgba(255, 138, 31, 0) 66%); }
+.accent-orange #aurora .ab2 { background: radial-gradient(circle, rgba(255, 200, 110, 0.7), rgba(255, 200, 110, 0) 66%); }
+.accent-orange #aurora .ab3 { background: radial-gradient(circle, rgba(255, 90, 90, 0.7), rgba(255, 90, 90, 0) 66%); }
+.accent-pink #aurora .ab1 { background: radial-gradient(circle, rgba(255, 79, 163, 0.8), rgba(255, 79, 163, 0) 66%); }
+.accent-pink #aurora .ab2 { background: radial-gradient(circle, rgba(255, 150, 210, 0.7), rgba(255, 150, 210, 0) 66%); }
+.accent-pink #aurora .ab3 { background: radial-gradient(circle, rgba(170, 110, 255, 0.7), rgba(170, 110, 255, 0) 66%); }
+.accent-red #aurora .ab1 { background: radial-gradient(circle, rgba(255, 69, 58, 0.8), rgba(255, 69, 58, 0) 66%); }
+.accent-red #aurora .ab2 { background: radial-gradient(circle, rgba(255, 140, 110, 0.7), rgba(255, 140, 110, 0) 66%); }
+.accent-red #aurora .ab3 { background: radial-gradient(circle, rgba(255, 160, 60, 0.7), rgba(255, 160, 60, 0) 66%); }
+.accent-white #aurora .ab1 { background: radial-gradient(circle, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0) 66%); }
+.accent-white #aurora .ab2 { background: radial-gradient(circle, rgba(200, 210, 230, 0.7), rgba(200, 210, 230, 0) 66%); }
+.accent-white #aurora .ab3 { background: radial-gradient(circle, rgba(150, 160, 190, 0.7), rgba(150, 160, 190, 0) 66%); }
+body:not(.night) #aurora .ab { opacity: 0.55; }
+
+/* Wallpaper: the featured photo (dimmed, or milky on the light theme), the slow aurora, or the flat theme color. */
+body.style-panels.style-glass #sky .veil { background: transparent; }
+body.style-panels.style-glass #hero { left: 0; top: 0; width: 1920px; height: 1080px; border-radius: 0; box-shadow: none; background: transparent; overflow: visible; }
+body.style-panels.style-glass.drawer-open #hero { opacity: 1; }
+body.style-panels.style-glass .himg, body.style-panels.style-glass .hshade { width: 1920px; height: 1080px; }
+body.style-panels.style-glass.wp-aurora .himg, body.style-panels.style-glass.wp-solid .himg, body.style-panels.style-glass.wp-aurora .hshade, body.style-panels.style-glass.wp-solid .hshade { display: none; }
+body.style-panels.style-glass.wp-aurora #aurora, body.style-panels.style-glass.wp-hero:not(.gtv) #aurora { display: block; }
+body.style-panels.style-glass .hshade { background: rgba(8, 10, 16, 0.4); }
+body.style-panels.style-glass:not(.night) .hshade { background: rgba(246, 247, 251, 0.42); }
+body.style-panels.style-glass.oled .hshade { background: rgba(0, 0, 0, 0.66); }
+body.style-panels.style-glass.oled #aurora { opacity: 0.55; }
+
+/* Surfaces: fallback look without blur (also "Off"). */
+body.style-panels.style-glass #platter, body.style-panels.style-glass .row16, body.style-panels.style-glass #htext, body.style-panels.style-glass .panel, body.style-panels.style-glass #mini, body.style-panels.style-glass #settings .box, body.style-panels.style-glass #shelfedit .box, body.style-panels.style-glass #toast { isolation: isolate; background: -webkit-linear-gradient(top, rgba(48, 51, 64, 0.74), rgba(24, 26, 34, 0.68)); background: linear-gradient(rgba(48, 51, 64, 0.74), rgba(24, 26, 34, 0.68)); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.34), inset 0 -16px 32px rgba(255, 255, 255, 0.04); color: #F5F5F7; }
+body.style-panels.style-glass:not(.night) #platter, body.style-panels.style-glass:not(.night) .row16, body.style-panels.style-glass:not(.night) #htext, body.style-panels.style-glass:not(.night) .panel, body.style-panels.style-glass:not(.night) #mini, body.style-panels.style-glass:not(.night) #settings .box, body.style-panels.style-glass:not(.night) #shelfedit .box, body.style-panels.style-glass:not(.night) #toast { background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.62)); background: linear-gradient(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.62)); box-shadow: 0 16px 40px rgba(40, 50, 80, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.85), inset 0 1px 0 #FFF, inset 0 -16px 32px rgba(255, 255, 255, 0.25); color: #1D1D1F; }
+body.style-panels.style-glass:not(.night) #toast { background: rgba(30, 32, 40, 0.86); color: #F5F5F7; }
+body.style-panels.style-glass.oled #platter, body.style-panels.style-glass.oled .row16, body.style-panels.style-glass.oled #htext, body.style-panels.style-glass.oled .panel, body.style-panels.style-glass.oled #mini, body.style-panels.style-glass.oled #settings .box, body.style-panels.style-glass.oled #shelfedit .box, body.style-panels.style-glass.oled #toast { background: rgba(8, 8, 10, 0.88); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.22); }
+body.style-panels.style-glass #platter::before, body.style-panels.style-glass .row16::before, body.style-panels.style-glass #htext::before, body.style-panels.style-glass .panel::before, body.style-panels.style-glass #mini::before, body.style-panels.style-glass #settings .box::before, body.style-panels.style-glass #shelfedit .box::before, body.style-panels.style-glass #toast::before { content: ''; position: absolute; left: 0; top: 0; right: 0; height: 100%; border-radius: inherit; z-index: -1; pointer-events: none; background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 42%); background: linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 42%); }
+body.style-panels.style-glass:not(.night) #platter::before, body.style-panels.style-glass:not(.night) .row16::before, body.style-panels.style-glass:not(.night) #htext::before, body.style-panels.style-glass:not(.night) .panel::before, body.style-panels.style-glass:not(.night) #mini::before, body.style-panels.style-glass:not(.night) #settings .box::before, body.style-panels.style-glass:not(.night) #shelfedit .box::before, body.style-panels.style-glass:not(.night) #toast::before { background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 42%); background: linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 42%); }
+body.style-panels.style-glass #platter, body.style-panels.style-glass .row16 { border-radius: 32px; }
+body.style-panels.style-glass .rclip { top: 0; height: 305px; border-radius: 32px; }
+body.style-panels.style-glass .strip { top: 84px; }
+body.style-panels.style-glass #shelfclip { top: 556px; height: 240px; }
+body.style-panels.style-glass #tiles { top: 56px; }
+body.style-panels.style-glass #htext { left: 80px; top: 196px; bottom: auto; width: 1760px; height: 320px; box-sizing: border-box; padding: 40px 56px; border-radius: 32px; overflow: hidden; }
+body.style-panels.style-glass #htext .ht { font-size: 50px; line-height: 56px; max-height: 112px; text-shadow: none; color: #FFF; }
+body.style-panels.style-glass #htext .hm { color: rgba(255, 255, 255, 0.86); max-width: 1100px; }
+body.style-panels.style-glass #htext .ho { color: rgba(255, 255, 255, 0.78); max-width: 1100px; }
+body.style-panels.style-glass:not(.night) #htext .ht { color: #1D1D1F; }
+body.style-panels.style-glass:not(.night) #htext .hm { color: rgba(29, 29, 31, 0.82); }
+body.style-panels.style-glass:not(.night) #htext .ho { color: rgba(29, 29, 31, 0.72); }
+body.style-panels.style-glass #mini { color: #F5F5F7; }
+body.style-panels.style-glass:not(.night) #mini { color: #1D1D1F; }
+body.style-panels.style-glass #quotes { color: rgba(245, 245, 247, 0.82); }
+body.style-panels.style-glass:not(.night) #quotes { color: #3C3C43; }
+body.style-panels.style-glass #quotes svg { fill: rgba(245, 245, 247, 0.7); }
+body.style-panels.style-glass:not(.night) #quotes svg { fill: rgba(60, 60, 67, 0.75); }
+body.style-panels.style-glass #ptitle { color: #F5F5F7; text-shadow: 0 2px 20px rgba(0, 0, 0, 0.35); }
+body.style-panels.style-glass:not(.night) #ptitle { color: #1D1D1F; text-shadow: none; }
+body.style-panels.style-glass .rlabel, body.style-panels.style-glass #shelflabel { color: #F5F5F7; }
+body.style-panels.style-glass:not(.night) .rlabel, body.style-panels.style-glass:not(.night) #shelflabel { color: #1D1D1F; }
+
+/* Tabs, round buttons, drawer keys. */
+body.style-panels.style-glass .tab, body.style-panels.style-glass .round { color: rgba(245, 245, 247, 0.78); background: rgba(255, 255, 255, 0.12); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+body.style-panels.style-glass .tab.on { color: #FFF; background: rgba(255, 255, 255, 0.28); }
+body.style-panels.style-glass:not(.night) .tab, body.style-panels.style-glass:not(.night) .round { color: #3C3C43; background: rgba(255, 255, 255, 0.5); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass:not(.night) .tab.on { color: #1D1D1F; background: rgba(255, 255, 255, 0.82); }
+body.style-panels.style-glass.oled .tab, body.style-panels.style-glass.oled .round { background: rgba(10, 10, 12, 0.88); }
+body.style-panels.style-glass.oled .tab.on { background: rgba(60, 60, 64, 0.9); }
+body.style-panels.style-glass .round { color: rgba(255, 255, 255, 0.94); }
+body.style-panels.style-glass:not(.night) .round { color: #1D1D1F; }
+body.style-panels.style-glass .round.focus { color: #1D1D1F; }
+body.style-panels.style-glass .round .tip { color: #F5F5F7; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45); }
+body.style-panels.style-glass:not(.night) .round .tip { color: #1D1D1F; text-shadow: none; }
+body.style-panels.style-glass .key { border-radius: 22px; isolation: isolate; color: rgba(255, 255, 255, 0.95); background: -webkit-linear-gradient(top, rgba(60, 64, 80, 0.62), rgba(30, 32, 42, 0.56)); background: linear-gradient(rgba(60, 64, 80, 0.62), rgba(30, 32, 42, 0.56)); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+body.style-panels.style-glass:not(.night) .key { color: #1D1D1F; background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.54)); background: linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.54)); box-shadow: 0 10px 30px rgba(40, 50, 80, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.85), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.oled .key { background: rgba(10, 10, 12, 0.88); }
+body.style-panels.style-glass .key.off { color: rgba(255, 255, 255, 0.5); }
+body.style-panels.style-glass:not(.night) .key.off { color: #8E8E93; }
+body.style-panels.style-glass .panel { border-radius: 32px; }
+body.style-panels.style-glass .panel .head { color: rgba(255, 255, 255, 0.72); }
+body.style-panels.style-glass:not(.night) .panel .head { color: #5C5C61; }
+body.style-panels.style-glass .panel.focus .head { color: #6E6E73; }
+body.style-panels.style-glass .panel .side, body.style-panels.style-glass #weather .range, body.style-panels.style-glass #weather .hour .t, body.style-panels.style-glass #weather .sun { color: rgba(255, 255, 255, 0.68); }
+body.style-panels.style-glass:not(.night) .panel .side, body.style-panels.style-glass:not(.night) #weather .range, body.style-panels.style-glass:not(.night) #weather .hour .t, body.style-panels.style-glass:not(.night) #weather .sun { color: #5C5C61; }
+body.style-panels.style-glass .panel.focus .side, body.style-panels.style-glass #weather.focus .range, body.style-panels.style-glass #weather.focus .hour .t, body.style-panels.style-glass #weather.focus .sun { color: #6E6E73; }
+
+/* App tiles keep their brand colors: a diagonal specular layer and a lit edge on top. */
+body.style-panels.style-glass .tile { border-radius: 22px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.55); }
+body.style-panels.style-glass .tile::after, body.style-panels.style-glass .cell .face::after { content: ''; position: absolute; left: 0; top: 0; right: 0; bottom: 0; height: auto; opacity: 1; pointer-events: none; background: -webkit-linear-gradient(315deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.18) 50%, rgba(255, 255, 255, 0) 100%); background: linear-gradient(135deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.18) 50%, rgba(255, 255, 255, 0) 100%); }
+body.style-panels.style-glass .tile::before, body.style-panels.style-glass .cell .face::before, body.style-panels.style-glass .rcard .rimg::before { content: ''; position: absolute; left: 0; top: -10%; width: 34%; height: 120%; opacity: 0; pointer-events: none; background: -webkit-linear-gradient(left, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0)); background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0)); }
+body.style-panels.style-glass .tile.focus::before, body.style-panels.style-glass .cell.focus .face::before, body.style-panels.style-glass .rcard.focus .rimg::before { -webkit-animation: glassSweep 0.6s ease-out 1; animation: glassSweep 0.6s ease-out 1; }
+body.style-panels.style-glass .tile.focus, body.style-panels.style-glass .rcard.focus, body.style-panels.style-glass .key.focus, body.style-panels.style-glass .panel.focus, body.style-panels.style-glass .round.focus, body.style-panels.style-glass .tab.focus { -webkit-will-change: transform; will-change: transform; }
+body.style-panels.style-glass .tile.focus { -webkit-transform: scale(1.08); transform: scale(1.08); }
+body.style-panels.style-glass .rcard.focus { -webkit-transform: scale(1.08); transform: scale(1.08); }
+body.style-panels.style-glass .cell .face { border-radius: 22px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+body.style-panels.style-glass .rcard .rimg { border-radius: 22px; background-color: rgba(255, 255, 255, 0.14); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32), inset 0 0 0 1px rgba(255, 255, 255, 0.3); }
+body.style-panels.style-glass .rcard::after { content: ''; position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 22px; pointer-events: none; background: -webkit-linear-gradient(315deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.16) 50%, rgba(255, 255, 255, 0) 100%); background: linear-gradient(135deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.16) 50%, rgba(255, 255, 255, 0) 100%); }
+body.style-panels.style-glass .rcard .rimg::after { border-radius: 22px; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9); }
+body.style-panels.style-glass .rcard .rname { border-radius: 0 0 22px 22px; }
+
+/* The blur: only where the browser has it, and not at level "Off". */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body.style-panels.style-glass.gl-strong #platter, body.style-panels.style-glass.gl-strong .row16, body.style-panels.style-glass.gl-strong #htext, body.style-panels.style-glass.gl-strong .panel, body.style-panels.style-glass.gl-strong #mini, body.style-panels.style-glass.gl-strong #settings .box, body.style-panels.style-glass.gl-strong #shelfedit .box, body.style-panels.style-glass.gl-strong #toast { -webkit-backdrop-filter: blur(28px) saturate(180%); backdrop-filter: blur(28px) saturate(180%); }
+  body.style-panels.style-glass.gl-strong .hshade { -webkit-backdrop-filter: blur(8px) saturate(180%); backdrop-filter: blur(8px) saturate(180%); }
+  body.style-panels.style-glass.gl-strong #apps { -webkit-backdrop-filter: blur(28px) saturate(180%); backdrop-filter: blur(28px) saturate(180%); }
+  body.style-panels.style-glass.gl-light #platter, body.style-panels.style-glass.gl-light .row16, body.style-panels.style-glass.gl-light #htext, body.style-panels.style-glass.gl-light .panel, body.style-panels.style-glass.gl-light #mini, body.style-panels.style-glass.gl-light #settings .box, body.style-panels.style-glass.gl-light #shelfedit .box, body.style-panels.style-glass.gl-light #toast { -webkit-backdrop-filter: blur(12px) saturate(180%); backdrop-filter: blur(12px) saturate(180%); }
+  body.style-panels.style-glass.gl-light .hshade { -webkit-backdrop-filter: blur(4px) saturate(180%); backdrop-filter: blur(4px) saturate(180%); }
+  body.style-panels.style-glass.gl-light #apps { -webkit-backdrop-filter: blur(12px) saturate(180%); backdrop-filter: blur(12px) saturate(180%); }
+  body.style-panels.style-glass.gl-strong #platter, body.style-panels.style-glass.gl-strong .row16, body.style-panels.style-glass.gl-strong #htext, body.style-panels.style-glass.gl-strong .panel, body.style-panels.style-glass.gl-strong #mini, body.style-panels.style-glass.gl-strong #settings .box, body.style-panels.style-glass.gl-strong #shelfedit .box, body.style-panels.style-glass.gl-strong #toast { background: -webkit-linear-gradient(top, rgba(70, 76, 96, 0.4), rgba(34, 38, 52, 0.34)); background: linear-gradient(rgba(70, 76, 96, 0.4), rgba(34, 38, 52, 0.34)); }
+  body.style-panels.style-glass.gl-strong:not(.night) #platter, body.style-panels.style-glass.gl-strong:not(.night) .row16, body.style-panels.style-glass.gl-strong:not(.night) #htext, body.style-panels.style-glass.gl-strong:not(.night) .panel, body.style-panels.style-glass.gl-strong:not(.night) #mini, body.style-panels.style-glass.gl-strong:not(.night) #settings .box, body.style-panels.style-glass.gl-strong:not(.night) #shelfedit .box { background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.4)); background: linear-gradient(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.4)); }
+  body.style-panels.style-glass.gl-strong.oled #platter, body.style-panels.style-glass.gl-strong.oled .row16, body.style-panels.style-glass.gl-strong.oled #htext, body.style-panels.style-glass.gl-strong.oled .panel, body.style-panels.style-glass.gl-strong.oled #mini, body.style-panels.style-glass.gl-strong.oled #settings .box, body.style-panels.style-glass.gl-strong.oled #shelfedit .box, body.style-panels.style-glass.gl-strong.oled #toast { background: rgba(10, 10, 12, 0.76); }
+  body.style-panels.style-glass.gl-strong #toast { background: rgba(20, 22, 30, 0.6); }
+  body.style-panels.style-glass.gl-strong .key { background: -webkit-linear-gradient(top, rgba(70, 76, 96, 0.4), rgba(34, 38, 52, 0.34)); background: linear-gradient(rgba(70, 76, 96, 0.4), rgba(34, 38, 52, 0.34)); }
+  body.style-panels.style-glass.gl-strong:not(.night) .key { background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.38)); background: linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.38)); }
+  body.style-panels.style-glass.gl-strong.oled .key { background: rgba(10, 10, 12, 0.76); }
+  body.style-panels.style-glass.gl-strong #settings .box, body.style-panels.style-glass.gl-strong #shelfedit .box { background: -webkit-linear-gradient(top, rgba(56, 62, 82, 0.55), rgba(26, 30, 42, 0.5)); background: linear-gradient(rgba(56, 62, 82, 0.55), rgba(26, 30, 42, 0.5)); }
+  body.style-panels.style-glass.gl-strong:not(.night) #settings .box, body.style-panels.style-glass.gl-strong:not(.night) #shelfedit .box { background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.55)); background: linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.55)); }
+  body.style-panels.style-glass.gl-strong.oled #settings .box, body.style-panels.style-glass.gl-strong.oled #shelfedit .box { background: rgba(10, 10, 12, 0.82); }
+  body.style-panels.style-glass.gl-light #platter, body.style-panels.style-glass.gl-light .row16, body.style-panels.style-glass.gl-light #htext, body.style-panels.style-glass.gl-light .panel, body.style-panels.style-glass.gl-light #mini, body.style-panels.style-glass.gl-light #settings .box, body.style-panels.style-glass.gl-light #shelfedit .box, body.style-panels.style-glass.gl-light #toast { background: -webkit-linear-gradient(top, rgba(70, 76, 96, 0.4), rgba(34, 38, 52, 0.34)); background: linear-gradient(rgba(70, 76, 96, 0.4), rgba(34, 38, 52, 0.34)); }
+  body.style-panels.style-glass.gl-light:not(.night) #platter, body.style-panels.style-glass.gl-light:not(.night) .row16, body.style-panels.style-glass.gl-light:not(.night) #htext, body.style-panels.style-glass.gl-light:not(.night) .panel, body.style-panels.style-glass.gl-light:not(.night) #mini, body.style-panels.style-glass.gl-light:not(.night) #settings .box, body.style-panels.style-glass.gl-light:not(.night) #shelfedit .box { background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.4)); background: linear-gradient(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.4)); }
+  body.style-panels.style-glass.gl-light.oled #platter, body.style-panels.style-glass.gl-light.oled .row16, body.style-panels.style-glass.gl-light.oled #htext, body.style-panels.style-glass.gl-light.oled .panel, body.style-panels.style-glass.gl-light.oled #mini, body.style-panels.style-glass.gl-light.oled #settings .box, body.style-panels.style-glass.gl-light.oled #shelfedit .box, body.style-panels.style-glass.gl-light.oled #toast { background: rgba(10, 10, 12, 0.76); }
+  body.style-panels.style-glass.gl-light #toast { background: rgba(20, 22, 30, 0.6); }
+  body.style-panels.style-glass.gl-light .key { background: -webkit-linear-gradient(top, rgba(70, 76, 96, 0.4), rgba(34, 38, 52, 0.34)); background: linear-gradient(rgba(70, 76, 96, 0.4), rgba(34, 38, 52, 0.34)); }
+  body.style-panels.style-glass.gl-light:not(.night) .key { background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.38)); background: linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.38)); }
+  body.style-panels.style-glass.gl-light.oled .key { background: rgba(10, 10, 12, 0.76); }
+  body.style-panels.style-glass.gl-light #settings .box, body.style-panels.style-glass.gl-light #shelfedit .box { background: -webkit-linear-gradient(top, rgba(56, 62, 82, 0.55), rgba(26, 30, 42, 0.5)); background: linear-gradient(rgba(56, 62, 82, 0.55), rgba(26, 30, 42, 0.5)); }
+  body.style-panels.style-glass.gl-light:not(.night) #settings .box, body.style-panels.style-glass.gl-light:not(.night) #shelfedit .box { background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.55)); background: linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.55)); }
+  body.style-panels.style-glass.gl-light.oled #settings .box, body.style-panels.style-glass.gl-light.oled #shelfedit .box { background: rgba(10, 10, 12, 0.82); }
+}
+body.style-panels.style-glass.style-glass.style-glass .tab.focus, body.style-panels.style-glass.style-glass.style-glass .round.focus, body.style-panels.style-glass.style-glass.style-glass .key.focus, body.style-panels.style-glass.style-glass.style-glass .panel.focus { background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.8)); background: linear-gradient(rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.8)); color: #1D1D1F; }
+body.style-panels.style-glass.style-glass.style-glass .oled .tab.focus, body.style-panels.style-glass.style-glass.style-glass .oled .round.focus { background: #FFF; }
+body.style-panels.style-glass.style-glass.style-glass .key.focus { color: #1C1C1E; }
+
+/* Focus: white lit edge, colored glow in the accent color. */
+body.style-panels.style-glass.accent-blue .tile.focus { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(61, 139, 255, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(61, 139, 255, 0.45); }
+body.style-panels.style-glass.accent-blue .cell.focus .face { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(61, 139, 255, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(61, 139, 255, 0.45); }
+body.style-panels.style-glass.accent-blue .rcard.focus .rimg { box-shadow: 0 22px 46px rgba(0, 0, 0, 0.5), 0 0 38px rgba(61, 139, 255, 0.5); }
+body.style-panels.style-glass.accent-blue .rcard.focus .rimg::after { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.92), inset 0 0 0 4px rgba(61, 139, 255, 0.5); }
+body.style-panels.style-glass.accent-blue .key.focus, body.style-panels.style-glass.accent-blue .panel.focus, body.style-panels.style-glass.accent-blue .round.focus { box-shadow: 0 18px 38px rgba(0, 0, 0, 0.36), 0 0 38px rgba(61, 139, 255, 0.5), inset 0 0 0 2px rgba(61, 139, 255, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-blue .tab.focus { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3), 0 0 28px rgba(61, 139, 255, 0.5), inset 0 0 0 2px rgba(61, 139, 255, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-blue .box .row.focus { box-shadow: 0 0 26px rgba(61, 139, 255, 0.35), inset 0 0 0 2px rgba(61, 139, 255, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+body.style-panels.style-glass.accent-green .tile.focus { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(47, 209, 88, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(47, 209, 88, 0.45); }
+body.style-panels.style-glass.accent-green .cell.focus .face { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(47, 209, 88, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(47, 209, 88, 0.45); }
+body.style-panels.style-glass.accent-green .rcard.focus .rimg { box-shadow: 0 22px 46px rgba(0, 0, 0, 0.5), 0 0 38px rgba(47, 209, 88, 0.5); }
+body.style-panels.style-glass.accent-green .rcard.focus .rimg::after { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.92), inset 0 0 0 4px rgba(47, 209, 88, 0.5); }
+body.style-panels.style-glass.accent-green .key.focus, body.style-panels.style-glass.accent-green .panel.focus, body.style-panels.style-glass.accent-green .round.focus { box-shadow: 0 18px 38px rgba(0, 0, 0, 0.36), 0 0 38px rgba(47, 209, 88, 0.5), inset 0 0 0 2px rgba(47, 209, 88, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-green .tab.focus { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3), 0 0 28px rgba(47, 209, 88, 0.5), inset 0 0 0 2px rgba(47, 209, 88, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-green .box .row.focus { box-shadow: 0 0 26px rgba(47, 209, 88, 0.35), inset 0 0 0 2px rgba(47, 209, 88, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+body.style-panels.style-glass.accent-purple .tile.focus { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(166, 108, 255, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(166, 108, 255, 0.45); }
+body.style-panels.style-glass.accent-purple .cell.focus .face { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(166, 108, 255, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(166, 108, 255, 0.45); }
+body.style-panels.style-glass.accent-purple .rcard.focus .rimg { box-shadow: 0 22px 46px rgba(0, 0, 0, 0.5), 0 0 38px rgba(166, 108, 255, 0.5); }
+body.style-panels.style-glass.accent-purple .rcard.focus .rimg::after { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.92), inset 0 0 0 4px rgba(166, 108, 255, 0.5); }
+body.style-panels.style-glass.accent-purple .key.focus, body.style-panels.style-glass.accent-purple .panel.focus, body.style-panels.style-glass.accent-purple .round.focus { box-shadow: 0 18px 38px rgba(0, 0, 0, 0.36), 0 0 38px rgba(166, 108, 255, 0.5), inset 0 0 0 2px rgba(166, 108, 255, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-purple .tab.focus { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3), 0 0 28px rgba(166, 108, 255, 0.5), inset 0 0 0 2px rgba(166, 108, 255, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-purple .box .row.focus { box-shadow: 0 0 26px rgba(166, 108, 255, 0.35), inset 0 0 0 2px rgba(166, 108, 255, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+body.style-panels.style-glass.accent-orange .tile.focus { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(255, 138, 31, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(255, 138, 31, 0.45); }
+body.style-panels.style-glass.accent-orange .cell.focus .face { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(255, 138, 31, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(255, 138, 31, 0.45); }
+body.style-panels.style-glass.accent-orange .rcard.focus .rimg { box-shadow: 0 22px 46px rgba(0, 0, 0, 0.5), 0 0 38px rgba(255, 138, 31, 0.5); }
+body.style-panels.style-glass.accent-orange .rcard.focus .rimg::after { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.92), inset 0 0 0 4px rgba(255, 138, 31, 0.5); }
+body.style-panels.style-glass.accent-orange .key.focus, body.style-panels.style-glass.accent-orange .panel.focus, body.style-panels.style-glass.accent-orange .round.focus { box-shadow: 0 18px 38px rgba(0, 0, 0, 0.36), 0 0 38px rgba(255, 138, 31, 0.5), inset 0 0 0 2px rgba(255, 138, 31, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-orange .tab.focus { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3), 0 0 28px rgba(255, 138, 31, 0.5), inset 0 0 0 2px rgba(255, 138, 31, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-orange .box .row.focus { box-shadow: 0 0 26px rgba(255, 138, 31, 0.35), inset 0 0 0 2px rgba(255, 138, 31, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+body.style-panels.style-glass.accent-pink .tile.focus { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(255, 79, 163, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(255, 79, 163, 0.45); }
+body.style-panels.style-glass.accent-pink .cell.focus .face { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(255, 79, 163, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(255, 79, 163, 0.45); }
+body.style-panels.style-glass.accent-pink .rcard.focus .rimg { box-shadow: 0 22px 46px rgba(0, 0, 0, 0.5), 0 0 38px rgba(255, 79, 163, 0.5); }
+body.style-panels.style-glass.accent-pink .rcard.focus .rimg::after { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.92), inset 0 0 0 4px rgba(255, 79, 163, 0.5); }
+body.style-panels.style-glass.accent-pink .key.focus, body.style-panels.style-glass.accent-pink .panel.focus, body.style-panels.style-glass.accent-pink .round.focus { box-shadow: 0 18px 38px rgba(0, 0, 0, 0.36), 0 0 38px rgba(255, 79, 163, 0.5), inset 0 0 0 2px rgba(255, 79, 163, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-pink .tab.focus { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3), 0 0 28px rgba(255, 79, 163, 0.5), inset 0 0 0 2px rgba(255, 79, 163, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-pink .box .row.focus { box-shadow: 0 0 26px rgba(255, 79, 163, 0.35), inset 0 0 0 2px rgba(255, 79, 163, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+body.style-panels.style-glass.accent-red .tile.focus { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(255, 69, 58, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(255, 69, 58, 0.45); }
+body.style-panels.style-glass.accent-red .cell.focus .face { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(255, 69, 58, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(255, 69, 58, 0.45); }
+body.style-panels.style-glass.accent-red .rcard.focus .rimg { box-shadow: 0 22px 46px rgba(0, 0, 0, 0.5), 0 0 38px rgba(255, 69, 58, 0.5); }
+body.style-panels.style-glass.accent-red .rcard.focus .rimg::after { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.92), inset 0 0 0 4px rgba(255, 69, 58, 0.5); }
+body.style-panels.style-glass.accent-red .key.focus, body.style-panels.style-glass.accent-red .panel.focus, body.style-panels.style-glass.accent-red .round.focus { box-shadow: 0 18px 38px rgba(0, 0, 0, 0.36), 0 0 38px rgba(255, 69, 58, 0.5), inset 0 0 0 2px rgba(255, 69, 58, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-red .tab.focus { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3), 0 0 28px rgba(255, 69, 58, 0.5), inset 0 0 0 2px rgba(255, 69, 58, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-red .box .row.focus { box-shadow: 0 0 26px rgba(255, 69, 58, 0.35), inset 0 0 0 2px rgba(255, 69, 58, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+body.style-panels.style-glass.accent-white .tile.focus { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(255, 255, 255, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(255, 255, 255, 0.45); }
+body.style-panels.style-glass.accent-white .cell.focus .face { box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4), 0 0 38px rgba(255, 255, 255, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 4px rgba(255, 255, 255, 0.45); }
+body.style-panels.style-glass.accent-white .rcard.focus .rimg { box-shadow: 0 22px 46px rgba(0, 0, 0, 0.5), 0 0 38px rgba(255, 255, 255, 0.5); }
+body.style-panels.style-glass.accent-white .rcard.focus .rimg::after { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.92), inset 0 0 0 4px rgba(255, 255, 255, 0.5); }
+body.style-panels.style-glass.accent-white .key.focus, body.style-panels.style-glass.accent-white .panel.focus, body.style-panels.style-glass.accent-white .round.focus { box-shadow: 0 18px 38px rgba(0, 0, 0, 0.36), 0 0 38px rgba(255, 255, 255, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-white .tab.focus { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3), 0 0 28px rgba(255, 255, 255, 0.5), inset 0 0 0 2px rgba(255, 255, 255, 0.7), inset 0 1px 0 #FFF; }
+body.style-panels.style-glass.accent-white .box .row.focus { box-shadow: 0 0 26px rgba(255, 255, 255, 0.35), inset 0 0 0 2px rgba(255, 255, 255, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+body.style-panels.style-glass.accent-white:not(.night) .tile.focus, body.style-panels.style-glass.accent-white:not(.night) .rcard.focus .rimg, body.style-panels.style-glass.accent-white:not(.night) .key.focus, body.style-panels.style-glass.accent-white:not(.night) .panel.focus, body.style-panels.style-glass.accent-white:not(.night) .round.focus, body.style-panels.style-glass.accent-white:not(.night) .tab.focus { box-shadow: 0 18px 38px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(29, 29, 31, 0.85); }
+
+/* Sheets: Settings, Shelf editor and All Apps. */
+body.style-panels.style-glass .sheet { background: rgba(8, 10, 16, 0.5); }
+body.style-panels.style-glass:not(.night) .sheet { background: rgba(240, 242, 248, 0.5); color: #1D1D1F; }
+body.style-panels.style-glass.oled .sheet { background: rgba(0, 0, 0, 0.7); }
+body.style-panels.style-glass #settings .box, body.style-panels.style-glass #shelfedit .box { border-radius: 32px; color: #F5F5F7; }
+body.style-panels.style-glass:not(.night) #settings .box, body.style-panels.style-glass:not(.night) #shelfedit .box { color: #1D1D1F; }
+body.style-panels.style-glass .box .row.focus { background: rgba(255, 255, 255, 0.16); }
+body.style-panels.style-glass:not(.night) .box .row.focus { background: rgba(255, 255, 255, 0.85); }
+body.style-panels.style-glass.oled .box .row.focus { background: rgba(255, 255, 255, 0.14); }
+body.style-panels.style-glass:not(.night) .box .title .sym { color: #3C3C43; }
+body.style-panels.style-glass:not(.night) .box .row .value { color: #1D1D1F; }
+body.style-panels.style-glass:not(.night) .box .row .value .chev { color: rgba(60, 60, 67, 0.45); }
+body.style-panels.style-glass:not(.night) .box .row.dim { color: rgba(60, 60, 67, 0.5); }
+body.style-panels.style-glass:not(.night) .box .hint { color: #6E6E73; }
+body.style-panels.style-glass:not(.night) .toggle { background: #B9BCC6; }
+body.style-panels.style-glass:not(.night) .toggle.on { background: #34C759; }
+body.style-panels.style-glass:not(.night) #apps h2 { color: #1D1D1F; }
+body.style-panels.style-glass:not(.night) .cell .label { color: #5C5C61; }
+body.style-panels.style-glass:not(.night) .cell.focus .label { color: #1D1D1F; }
+
+/* Animations "Reduced": no sliding reflection, no aurora drift, no transitions. */
+body.style-panels.style-glass.mo-reduced, body.style-panels.style-glass.mo-reduced *, body.style-panels.style-glass.mo-reduced *::before, body.style-panels.style-glass.mo-reduced *::after { -webkit-transition: none !important; transition: none !important; -webkit-animation: none !important; animation: none !important; }

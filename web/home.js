@@ -913,8 +913,11 @@
 
   /** Sets the style class and the pixel numbers that the scrolling code reads. */
   function setStyleGeo() {
-    PANELS = Prefs.style() === 'panels';
+    var style = Prefs.style(), glass = style === 'glass';
+    PANELS = style === 'panels' || glass;   // Glass reuses the Panels geometry
     setClass(body, 'style-panels', PANELS);
+    setClass(body, 'style-glass', glass);
+    applyGlass();
     ROW0 = PANELS ? 836 : 880;
     ROW_H = PANELS ? 337 : 300;
     CL = PANELS ? 104 : 80;
@@ -924,6 +927,24 @@
     SH.ty = PANELS ? 25 : 40;
     SH.pl = PANELS ? 80 : 40;
     SH.pw = PANELS ? 1760 : 1840;
+  }
+
+  var GLASS_LEVELS = ['strong', 'light', 'off'], WALLPAPERS = ['hero', 'aurora', 'solid'];
+
+  function choice(value, list) { return list.indexOf(value) < 0 ? list[0] : value; }
+
+  /** Glass style: blur level, motion and wallpaper become classes on the body (CSS does the rest). */
+  function applyGlass() {
+    var g = choice(Prefs.glass(), GLASS_LEVELS), w = choice(Prefs.wallpaper(), WALLPAPERS), i;
+    for (i = 0; i < GLASS_LEVELS.length; i++) setClass(body, 'gl-' + GLASS_LEVELS[i], GLASS_LEVELS[i] === g);
+    for (i = 0; i < WALLPAPERS.length; i++) setClass(body, 'wp-' + WALLPAPERS[i], WALLPAPERS[i] === w);
+    setClass(body, 'mo-reduced', Prefs.motion() === 'reduced');
+    if (hasClass(body, 'style-glass') && !$('aurora')) {
+      var sky = $('sky'), a = document.createElement('div');
+      a.id = 'aurora';
+      for (i = 1; i <= 3; i++) el('div', 'ab ab' + i, a);
+      sky.insertBefore(a, sky.querySelector('.veil'));
+    }
   }
 
   function applyStyle() {
@@ -936,7 +957,18 @@
 
   var STYLE_NAMES = {
     hero: function () { return tr('Destaque', 'Spotlight', 'Destacado'); },
-    panels: function () { return tr('Painéis', 'Panels', 'Paneles'); }
+    panels: function () { return tr('Painéis', 'Panels', 'Paneles'); },
+    glass: function () { return tr('Vidro', 'Glass', 'Vidrio'); }
+  };
+  var GLASS_NAMES = {
+    strong: function () { return tr('Forte', 'Strong', 'Fuerte'); },
+    light: function () { return tr('Leve', 'Light', 'Suave'); },
+    off: function () { return tr('Desligado', 'Off', 'Desactivado'); }
+  };
+  var WALLPAPER_NAMES = {
+    hero: function () { return tr('Destaque', 'Spotlight', 'Destacado'); },
+    aurora: function () { return 'Aurora'; },
+    solid: function () { return tr('Liso', 'Solid', 'Liso'); }
   };
 
   // MARK: - Home Settings
@@ -959,6 +991,7 @@
 
   function settingRows() {
     var lang = Prefs.language(), unit = Prefs.temperature(), theme = Prefs.theme(), accent = Prefs.accent(), style = Prefs.style();
+    var isGlass = style === 'glass', glassFx = choice(Prefs.glass(), GLASS_LEVELS), wall = choice(Prefs.wallpaper(), WALLPAPERS), motion = Prefs.motion();
     var auto = tr('Automático', 'Automatic', 'Automático'), on = tr('Ligado', 'On', 'Activado'), off = tr('Desligado', 'Off', 'Desactivado');
     var rows = [
       {label: tr('Idioma', 'Language', 'Idioma'), value: lang === 'ru' ? 'Русский' : lang === 'de' ? 'Deutsch' : lang === 'pt' ? 'Português' : lang === 'en' ? 'English' : lang === 'es' ? 'Español' : auto,
@@ -966,11 +999,17 @@
       {label: tr('Temperatura', 'Temperature', 'Temperatura'), value: unit === 'C' ? '°C' : unit === 'F' ? '°F' : auto,
         step: function (d) { cycle('temperature', ['auto', 'C', 'F'], unit, d); renderPanels(); }},
       {id: 'style', label: tr('Estilo', 'Style', 'Estilo'), value: (STYLE_NAMES[style] || STYLE_NAMES.hero)(),
-        step: function (d) { cycle('style', ['hero', 'panels'], style, d); applyStyle(); }},
+        step: function (d) { cycle('style', ['hero', 'panels', 'glass'], style, d); applyStyle(); }},
       {label: tr('Tema', 'Theme', 'Tema'), value: THEME_NAMES[theme] ? THEME_NAMES[theme]() : auto,
         step: function (d) { cycle('theme', ['auto', 'dark', 'oled', 'light'], theme, d); checkNight(); }},
       {label: tr('Cor de destaque', 'Accent color', 'Color de acento'), value: ACCENT_NAMES[accent] ? ACCENT_NAMES[accent]() : ACCENT_NAMES.blue(),
         step: function (d) { cycle('accent', ACCENTS, accent, d); applyAccent(); }},
+      {label: tr('Efeito de vidro', 'Glass effect', 'Efecto de vidrio'), value: GLASS_NAMES[glassFx](), dim: !isGlass,
+        step: function (d) { cycle('glass', GLASS_LEVELS, glassFx, d); applyGlass(); }},
+      {label: tr('Animações', 'Animations', 'Animaciones'), value: motion === 'reduced' ? tr('Reduzidas', 'Reduced', 'Reducidas') : tr('Normais', 'Normal', 'Normales'), dim: !isGlass,
+        step: function (d) { cycle('motion', ['normal', 'reduced'], motion, d); applyGlass(); }},
+      {label: tr('Papel de parede', 'Wallpaper', 'Fondo de pantalla'), value: WALLPAPER_NAMES[wall](), dim: !isGlass,
+        step: function (d) { cycle('wallpaper', WALLPAPERS, wall, d); applyGlass(); }},
       {label: tr('Widget do clima', 'Weather widget', 'Widget del clima'), toggle: Prefs.weather(),
         step: function () { Prefs.set('weather', !Prefs.weather()); renderPanels(); }},
       {label: tr('Widget de cotações', 'Quotes widget', 'Widget de cotizaciones'), toggle: Prefs.quotes(),
