@@ -1,7 +1,7 @@
 /*
  * The home screen on a 1920 × 1080 stage, with the Android app's measurements (HomeView): the title and tabs at the top
  * left, icon-only glass buttons at the top right, three picks, and the glass shelf at the bottom; ↓ on the shelf opens
- * the drawer (inputs, shortcuts, weather, prices). Light by day, dark from sunset to sunrise.
+ * the drawer (inputs, shortcuts, weather, system). Light by day, dark from sunset to sunrise.
  * No CSS variables or grid: older LG TVs (webOS 3 and 4) don't have them. No backdrop-filter either, except in the
  * Glass style at the end, inside @supports. Only transform and opacity animate.
  */
@@ -81,8 +81,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .drawer-open #home { -webkit-transform: translateY(-560px); transform: translateY(-560px); }
 #top { -webkit-transition: opacity 0.3s; transition: opacity 0.3s; }
 .drawer-open #top { opacity: 0; }
-#drawer { -webkit-transform: translateY(560px); transform: translateY(560px); opacity: 0; }
-.drawer-open #drawer { -webkit-transform: none; transform: none; opacity: 1; }
+#drawer { -webkit-transform: translateY(560px); transform: translateY(560px); opacity: 0; pointer-events: none; }
+.drawer-open #drawer { -webkit-transform: none; transform: none; opacity: 1; pointer-events: auto; }
 
 /* MARK: - Hero: the featured title's photo behind everything, dark on the left and at the bottom */
 
@@ -146,25 +146,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .night .rlabel, .gtv .rlabel { color: #F5F5F7; }
 #shelflabel { top: 590px; }
 
-/* Crypto quotes at the right end of the tab row: a quiet detail. */
-#quotes {
-  position: absolute;
-  right: 80px;
-  top: 120px;
-  height: 28px;
-  font-size: 21px;
-  line-height: 28px;
-  color: #8E8E93;
-  white-space: nowrap;
-  -webkit-transition: opacity 0.25s;
-  transition: opacity 0.25s;
-  font-feature-settings: 'tnum';
-}
-#quotes .q { display: inline-block; margin-left: 24px; }
-#quotes svg { width: 15px; height: 15px; vertical-align: -1px; margin-right: 6px; fill: rgba(142, 142, 147, 0.7); }
-#quotes.hide { opacity: 0; }
-.gtv #quotes, .night #quotes { color: rgba(245, 245, 247, 0.62); }
-.night #quotes svg { fill: rgba(245, 245, 247, 0.55); }
+/* The crypto quotes are gone from this home screen for good (the element stays in index.html, hidden). */
+#quotes { display: none; }
 
 /* Live TV, HDMI Inputs and Settings: glass circles; the focused one turns white, with its name below. */
 .round {
@@ -209,7 +192,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 /* MARK: - Content rows: 16:9 cards, each row slides sideways, the whole page slides up */
 
-#rows { position: absolute; left: 0; top: 880px; width: 1920px; }
+#rows { position: absolute; left: 0; top: 880px; width: 1920px; -webkit-transition: opacity 0.3s; transition: opacity 0.3s; }
+.drawer-open #rows { opacity: 0; }
 .row16 { position: absolute; left: 0; width: 1920px; height: 260px; -webkit-transition: opacity 0.3s; transition: opacity 0.3s; }
 .row16 .rlabel { top: 0; }
 .row16.past { opacity: 0; }
@@ -231,7 +215,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 #clock {
   position: absolute;
   left: 76px;
-  top: 300px;
+  top: 276px;
   font-size: 176px;
   font-weight: 200;
   letter-spacing: -0.01em;
@@ -243,6 +227,18 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .no-rows #clock { display: block; }
 .night #clock { color: #F5F5F7; }
 .night #clock .date { color: rgba(245, 245, 247, 0.62); }
+
+/* Under the date: loading, or why the shelves are unavailable. On Movies and Shows with nothing to show, a message
+   takes the clock's place (body.tab-empty). */
+#rowsnote { position: absolute; left: 80px; top: 528px; max-width: 1700px; color: #6E6E73; pointer-events: none; }
+#rowsnote .nt { font-size: 56px; font-weight: 700; line-height: 64px; letter-spacing: -0.01em; color: #1D1D1F; }
+#rowsnote .nr { font-size: 25px; font-weight: 500; line-height: 34px; }
+#rowsnote .nt:empty { display: none; }
+.night #rowsnote { color: rgba(245, 245, 247, 0.62); }
+.night #rowsnote .nt { color: #F5F5F7; }
+.tab-empty #clock { display: none; }
+.tab-empty #rowsnote { top: 300px; }
+.tab-empty #rowsnote .nr { margin-top: 14px; }
 
 /* MARK: - Shelf: the glass bar with the apps, each in its brand color; focused, a tile grows 20% and rises. */
 
@@ -263,12 +259,19 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 #shelfclip {
   position: absolute;
-  left: 40px;
+  left: 80px;
   top: 640px;
-  width: 1840px;
+  width: 1760px;
   height: 206px;
   overflow: hidden;
-  border-radius: 62px;
+  border-radius: 0;
+}
+/* The apps fade out at both ends of the bar, inside its padding (without mask support they are simply cut there). */
+@supports ((-webkit-mask-image: linear-gradient(#000, #000)) or (mask-image: linear-gradient(#000, #000))) {
+  #shelfclip {
+    -webkit-mask-image: -webkit-linear-gradient(left, rgba(0, 0, 0, 0) 0%, #000 4%, #000 96%, rgba(0, 0, 0, 0) 100%);
+    mask-image: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, #000 4%, #000 96%, rgba(0, 0, 0, 0) 100%);
+  }
 }
 #tiles {
   position: absolute;
@@ -325,7 +328,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .night .tile { box-shadow: 0 4px 22px rgba(0, 0, 0, 0.3); }
 .night .tile.focus { box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6); }
 
-/* MARK: - Drawer: inputs and shortcuts, weather, prices */
+/* MARK: - Drawer: inputs and shortcuts, weather, system */
 
 .row-title { position: absolute; top: 494px; font-size: 25px; font-weight: 600; color: #6E6E73; white-space: nowrap; }
 .night .row-title { color: rgba(255, 255, 255, 0.7); }
@@ -383,16 +386,6 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .night #weather .range, .night #weather .hour .t, .night #weather .sun { color: rgba(255, 255, 255, 0.68); }
 .night #weather .split { background: rgba(255, 255, 255, 0.14); }
 
-#prices .coin { position: absolute; left: 34px; right: 34px; height: 40px; font-size: 29px; font-weight: 500; white-space: nowrap; }
-#prices .coin svg { position: absolute; left: 2px; top: 6px; width: 26px; height: 26px; fill: #6E6E73; }
-#prices .coin .n { position: absolute; left: 50px; top: 0; }
-#prices .coin .p { position: absolute; right: 128px; top: 1px; font-size: 26px; font-feature-settings: 'tnum'; }
-#prices .coin .c { position: absolute; right: 0; top: 2px; width: 108px; height: 34px; line-height: 34px; border-radius: 17px; text-align: center; font-size: 21px; font-weight: 600; font-feature-settings: 'tnum'; }
-#prices .up { color: #248A3D; background: rgba(36, 138, 61, 0.2); }
-#prices .down { color: #D70015; background: rgba(215, 0, 21, 0.2); }
-.night #prices .coin svg { fill: rgba(255, 255, 255, 0.8); }
-.night #prices .up { color: #30D158; background: rgba(48, 209, 88, 0.2); }
-.night #prices .down { color: #FF453A; background: rgba(255, 69, 58, 0.2); }
 
 /* MARK: - Sheets over the home screen: All Apps, Settings, Shelf */
 
@@ -619,12 +612,10 @@ body.style-panels #mini .mwx:empty { display: none; }
 body.style-panels #mini .mwx .sym { width: 28px; height: 28px; vertical-align: -5px; }
 body.style-panels.oled #mini { background: #0A0A0A; }
 
-/* Round buttons and quotes on the light theme (the Spotlight style forces the dark look because of the photo). */
+/* Round buttons on the light theme (the Spotlight style forces the dark look because of the photo). */
 body.style-panels:not(.night) .round { background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.5)); background: linear-gradient(rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.5)); color: #1D1D1F; box-shadow: 0 6px 26px rgba(0, 0, 0, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.5); }
 body.style-panels:not(.night) .round.focus { background: #FFF; }
 body.style-panels:not(.night) .round.focus .tip { color: #1D1D1F; }
-body.style-panels:not(.night) #quotes { color: #6E6E73; }
-body.style-panels:not(.night) #quotes svg { fill: rgba(60, 60, 67, 0.6); }
 
 /* The featured title in a rounded panel with its photo, over the blurred background. */
 body.style-panels #hero { left: 80px; top: 196px; width: 1760px; height: 320px; border-radius: 28px; overflow: hidden; -webkit-transition: opacity 0.4s; transition: opacity 0.4s; box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28); }
@@ -639,7 +630,11 @@ body.style-panels #htext .ho { margin-top: 10px; font-size: 24px; line-height: 3
 /* "Your apps" and each row: a panel with its title inside. */
 body.style-panels #platter { top: 548px; height: 256px; border-radius: 28px; }
 body.style-panels #shelflabel { z-index: 1; left: 104px; top: 572px; font-size: 30px; font-weight: 700; }
-body.style-panels #shelfclip { left: 92px; top: 612px; width: 1736px; height: 176px; border-radius: 0; }
+body.style-panels #shelfclip { left: 104px; top: 612px; width: 1712px; height: 176px; border-radius: 0; }
+body.style-panels #clock { left: 76px; top: 206px; font-size: 136px; }
+body.style-panels #clock .date { font-size: 36px; margin-top: 10px; }
+body.style-panels #rowsnote { top: 420px; }
+body.style-panels.tab-empty #rowsnote { top: 236px; }
 body.style-panels #rows { top: 836px; }
 body.style-panels .row16 { left: 80px; width: 1760px; height: 305px; border-radius: 28px; }
 body.style-panels .row16 .rlabel { left: 24px; top: 22px; font-size: 30px; font-weight: 700; }
@@ -730,10 +725,6 @@ body.style-panels.style-glass:not(.night) #htext .hm { color: rgba(29, 29, 31, 0
 body.style-panels.style-glass:not(.night) #htext .ho { color: rgba(29, 29, 31, 0.72); }
 body.style-panels.style-glass #mini { color: #F5F5F7; }
 body.style-panels.style-glass:not(.night) #mini { color: #1D1D1F; }
-body.style-panels.style-glass #quotes { color: rgba(245, 245, 247, 0.82); }
-body.style-panels.style-glass:not(.night) #quotes { color: #3C3C43; }
-body.style-panels.style-glass #quotes svg { fill: rgba(245, 245, 247, 0.7); }
-body.style-panels.style-glass:not(.night) #quotes svg { fill: rgba(60, 60, 67, 0.75); }
 body.style-panels.style-glass #ptitle { color: #F5F5F7; text-shadow: 0 2px 20px rgba(0, 0, 0, 0.35); }
 body.style-panels.style-glass:not(.night) #ptitle { color: #1D1D1F; text-shadow: none; }
 body.style-panels.style-glass .rlabel, body.style-panels.style-glass #shelflabel { color: #F5F5F7; }

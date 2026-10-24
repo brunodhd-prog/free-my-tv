@@ -29,21 +29,6 @@
     return s;
   }
 
-  function coin(i, parent) {
-    var c = window.COINS && window.COINS[i];
-    if (!c) return;
-    var ns = 'http://www.w3.org/2000/svg';
-    var svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('viewBox', '0 0 32 32');
-    for (var k = 0; k < c.length; k++) {
-      var p = document.createElementNS(ns, 'path');
-      p.setAttribute('d', c[k]);
-      p.setAttribute('fill-rule', 'evenodd');
-      svg.appendChild(p);
-    }
-    parent.appendChild(svg);
-  }
-
   function hasClass(e, c) { return (' ' + e.className + ' ').indexOf(' ' + c + ' ') >= 0; }
   function setClass(e, c, on) {
     if (!e) return;
@@ -136,6 +121,9 @@
   var Z = {TOP: 'top', ROWS: 'rows', SHELF: 'shelf', DRAWER: 'drawer', APPS: 'apps', SETTINGS: 'settings', EDIT: 'edit'};
   var st = {zone: Z.SHELF, top: 0, tab: 0, r: 0, col: 0, shelf: 0, shelfPos: 0, drawer: 0, grid: 0, row: 0, edit: 0};
 
+  /** The top's items, in st.top: 0-2 the tabs, 3 Apps, 4 Customize, 5-7 the round buttons (Live TV, HDMI Inputs, Settings). */
+  var TOP = {TAB_LAST: 2, APPS: 3, CUSTOM: 4, LIVE: 5, INPUTS: 6, SETTINGS: 7};
+
   function sheetOpen() { return st.zone === Z.APPS || st.zone === Z.SETTINGS || st.zone === Z.EDIT; }
 
   function updateFocus() {
@@ -147,8 +135,7 @@
     }
     if ($('ptitle') && tabNames[st.tab] && $('ptitle').textContent !== tabNames[st.tab]) $('ptitle').textContent = tabNames[st.tab];
     list = $('buttons').children;
-    for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.TOP && st.top === 5 + i);
-    setClass($('quotes'), 'hide', st.zone === Z.TOP && st.top >= 5);
+    for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.TOP && st.top === TOP.LIVE + i);
     paintRows();
     scrollShelf();
     list = $('tiles').children;
@@ -189,7 +176,7 @@
     return (r.left + r.right) / 2;
   }
 
-  // MARK: - Top: title, tabs, buttons, quotes
+  // MARK: - Top: title, tabs, buttons
 
   var TAB_KIND = [null, 'movie', 'tv', null];
 
@@ -207,7 +194,7 @@
     var mine = el('button', 'tab', tabs, tr('Personalizar', 'Customize', 'Personalizar'));   // opens Settings at "Style"
     mine.style.marginLeft = '28px';
     mine.style.fontWeight = '600';
-    hover(mine, Z.TOP, 4);
+    hover(mine, Z.TOP, TOP.CUSTOM);
     $('shelflabel').textContent = tr('Seus apps', 'Your apps', 'Tus apps');
     var buttons = $('buttons');
     buttons.innerHTML = '';
@@ -218,17 +205,7 @@
       r.style.left = (1596 + 88 * b) + 'px';
       sym(defs[b][0], r);
       el('div', 'tip', r, defs[b][1]);
-      hover(r, Z.TOP, 5 + b);
-    }
-  }
-
-  function renderQuotes() {
-    var q = $('quotes'), coins = Data.activeCoins();
-    q.innerHTML = '';
-    for (var i = 0; i < coins.length; i++) {
-      var item = el('span', 'q', q);
-      coin(coins[i], item);
-      el('span', '', item, Data.compact(Data.prices[coins[i]]));
+      hover(r, Z.TOP, TOP.LIVE + b);
     }
   }
 
@@ -417,30 +394,53 @@
     }
   }
 
-  /** Under the clock, when there's a TMDB key but no shelves: loading, or why they're unavailable. */
+  /** Why there is nothing to show: loading, the reason a request failed, or just that this tab is empty. */
+  function noteReason() {
+    if (!Data.hasKey()) return tr('Falta a chave do TMDB (tmdb_key)', 'The TMDB key is missing (tmdb_key)', 'Falta la clave de TMDB (tmdb_key)');
+    var status = Data.rowsStatus();
+    if (status.state === 'loading') return tr('Carregando…', 'Loading…', 'Cargando…');
+    if (status.state === 'error') return status.message;
+    return '';
+  }
+
+  /** Movies and Shows without shelves: the title of the message, or '' when the tab isn't one of them. */
+  function emptyTitle() {
+    if (st.tab === 1) return tr('Sem filmes para mostrar', 'No movies to show', 'No hay películas para mostrar');
+    if (st.tab === 2) return tr('Sem séries para mostrar', 'No shows to show', 'No hay series para mostrar');
+    return '';
+  }
+
+  /**
+   * Where the clock is, when there are no shelves: loading, or why they're unavailable (with a TMDB key); on Movies and
+   * Shows a message in place of the clock, so choosing them never looks like nothing happened.
+   */
   function paintNote() {
     var n = $('rowsnote');
     if (!n) {
       n = el('div', '', $('top'));
       n.id = 'rowsnote';
-      var ns = n.style;
-      ns.position = 'absolute'; ns.left = '80px'; ns.top = '544px'; ns.maxWidth = '1500px'; ns.fontSize = '24px'; ns.fontWeight = '500';
+      el('div', 'nt', n);
+      el('div', 'nr', n);
     }
-    var text = '';
-    if (Data.hasKey() && hasClass(body, 'no-rows')) {
+    var empty = hasClass(body, 'no-rows'), title = '', reason = '';
+    if (empty && emptyTitle()) {
+      title = emptyTitle();
+      reason = noteReason();
+    } else if (empty && Data.hasKey()) {
       var status = Data.rowsStatus();
-      if (status.state === 'loading') text = tr('Carregando filmes e séries…', 'Loading movies and shows…', 'Cargando películas y series…');
-      else if (status.state === 'error') text = tr('Filmes e séries indisponíveis: ', 'Movies and shows unavailable: ', 'Películas y series no disponibles: ') + status.message;
+      if (status.state === 'loading') reason = tr('Carregando filmes e séries…', 'Loading movies and shows…', 'Cargando películas y series…');
+      else if (status.state === 'error') reason = tr('Filmes e séries indisponíveis: ', 'Movies and shows unavailable: ', 'Películas y series no disponibles: ') + status.message;
     }
-    if (n.textContent !== text) n.textContent = text;
-    n.style.display = text ? '' : 'none';
-    n.style.color = hasClass(body, 'night') ? 'rgba(245,245,247,0.62)' : '#6E6E73';
+    setClass(body, 'tab-empty', !!title);
+    if (n.firstChild.textContent !== title) n.firstChild.textContent = title;
+    if (n.lastChild.textContent !== reason) n.lastChild.textContent = reason;
+    n.style.display = title || reason ? '' : 'none';
   }
 
   // MARK: - Shelf
 
   // The shelf has no limit: fixed-size tiles in a strip that slides inside the fixed glass; only the tiles near the view have a face.
-  var SH = {tw: 126 * 16 / 9, th: 126, gap: 48, pad: 40, left: 40, view: 1760, ty: 40, pl: 40, pw: 1840, shift: 0, clip: null, pool: {}, win: 7};
+  var SH = {tw: 126 * 16 / 9, th: 126, gap: 48, pad: 0, left: 80, view: 1760, ty: 40, pl: 40, pw: 1840, shift: 0, clip: null, pool: {}, win: 7};
 
   function shelfStep() { return SH.tw + SH.gap; }
 
@@ -600,22 +600,13 @@
     var d = $('drawer');
     var old = d.querySelectorAll('.panel');
     for (var o = 0; o < old.length; o++) d.removeChild(old[o]);
-    var wx = Prefs.weather(), coins = Data.activeCoins(), qt = coins.length > 0;
-    var sysW = 420, end = 1840 - sysW - 16, split = 80 + (end - 80) * 0.55;
+    var wx = Prefs.weather(), sysW = 704, end = 1840 - sysW - 16;
     if (wx) {
       var w = el('div', 'panel glass', d);
       w.id = 'weather';
       w.style.left = '80px';
-      w.style.width = ((qt ? split - 16 : end) - 80) + 'px';
+      w.style.width = (end - 80) + 'px';
       renderWeather(w);
-    }
-    if (qt) {
-      var q = el('div', 'panel glass', d);
-      q.id = 'prices';
-      var left = wx ? split + 16 : 80;
-      q.style.left = left + 'px';
-      q.style.width = (end - left) + 'px';
-      renderPrices(q, coins);
     }
     var sc = el('div', 'panel glass syscard', d);
     sc.id = 'system';
@@ -803,21 +794,6 @@
     if (w.sunset) { var b = el('span', '', sun); sym('sunset', b); b.appendChild(document.createTextNode(tr('Pôr do sol ', 'Sunset ', 'Atardecer ') + Data.time(w.sunset))); }
   }
 
-  function renderPrices(card, coins) {
-    el('div', 'head', card, tr('Cotações', 'Crypto', 'Cripto'));
-    var stale = Data.staleness(Data.pricesAt, 5 * 60000);
-    el('div', 'side', card, stale || tr('variação em 24 h', '24h change', 'variación en 24 h'));
-    for (var j = 0; j < coins.length; j++) {
-      var i = coins[j], row = el('div', 'coin', card);
-      row.style.top = (86 + 52 * j) + 'px';
-      coin(i, row);
-      el('span', 'n', row, Data.coinName(i));
-      el('span', 'p', row, Data.money(Data.prices[i]));
-      var ch = Data.changes[i];
-      if (!isNaN(ch)) el('span', 'c ' + (ch >= 0 ? 'up' : 'down'), row, Data.change(ch));
-    }
-  }
-
   function openDrawer() {
     if (!drawerItems.length) return;
     st.zone = Z.DRAWER;
@@ -921,10 +897,11 @@
     ROW0 = PANELS ? 836 : 880;
     ROW_H = PANELS ? 337 : 300;
     CL = PANELS ? 104 : 80;
-    SH.left = PANELS ? 92 : 40;
-    SH.pad = PANELS ? 12 : 40;
+    // The strip is clipped inside the panel's 24 px padding (the Spotlight bar has 40 px), fading out at both ends.
+    SH.left = PANELS ? 104 : 80;
+    SH.pad = 0;
     SH.view = PANELS ? 1712 : 1760;
-    SH.ty = PANELS ? 25 : 40;
+    SH.ty = PANELS ? 33 : 40;
     SH.pl = PANELS ? 80 : 40;
     SH.pw = PANELS ? 1760 : 1840;
   }
@@ -1011,18 +988,8 @@
       {label: tr('Papel de parede', 'Wallpaper', 'Fondo de pantalla'), value: WALLPAPER_NAMES[wall](), dim: !isGlass,
         step: function (d) { cycle('wallpaper', WALLPAPERS, wall, d); applyGlass(); }},
       {label: tr('Widget do clima', 'Weather widget', 'Widget del clima'), toggle: Prefs.weather(),
-        step: function () { Prefs.set('weather', !Prefs.weather()); renderPanels(); }},
-      {label: tr('Widget de cotações', 'Quotes widget', 'Widget de cotizaciones'), toggle: Prefs.quotes(),
-        step: function () { Prefs.set('quotes', !Prefs.quotes()); Data.settingsChanged(); }}
+        step: function () { Prefs.set('weather', !Prefs.weather()); renderPanels(); }}
     ];
-    var names = ['Bitcoin', 'Ethereum', 'Solana', tr('Dólar', 'Dollar', 'Dólar')];
-    var count = Data.currency === 'BRL' ? 4 : 3;
-    for (var i = 0; i < count; i++) {
-      (function (i) {
-        rows.push({label: names[i], toggle: Prefs.quotes() && Prefs.coin(i), dim: !Prefs.quotes(),
-          step: function () { if (Prefs.quotes()) { Prefs.setCoin(i, !Prefs.coin(i)); Data.settingsChanged(); } }});
-      })(i);
-    }
     rows.push({id: 'shelf', label: tr('Prateleira', 'Shelf', 'Estante'), value: '›', step: function (d) { if (d >= 0) openShelfEdit(); }});
     var access = TV.listAccess();   // LG only: whether the TV lets us list all its apps
     if (access) {
@@ -1174,15 +1141,28 @@
     return null;
   }
 
+  function activateTop(i) {
+    if (i <= TOP.TAB_LAST) {
+      // OK on a tab: focusing it already selected it; when it has nothing to show, say why
+      selectTab(i);
+      if (!view.length && !emptyTitle()) {   // Movies and Shows already say it on the screen
+        var why = noteReason();
+        toast(tr('Nada para mostrar aqui', 'Nothing to show here', 'Nada que mostrar aquí') + (why ? ': ' + why : ''));
+      }
+    } else if (i === TOP.APPS) openApps();
+    else if (i === TOP.CUSTOM) openSettings('style');
+    else if (i === TOP.LIVE) {
+      var live = liveTV();
+      if (live) launcher(live.id, tr('TV aberta', 'Live TV', 'TV en vivo'))();
+      else toast(tr('Não deu para abrir ', "Couldn't open ", 'No se pudo abrir ') + tr('TV aberta', 'Live TV', 'TV en vivo'));
+    } else if (i === TOP.INPUTS) { st.zone = Z.SHELF; openDrawer(); st.drawer = 1 < drawerInputs ? 1 : 0; updateFocus(); }
+    else openSettings();
+  }
+
   function activate() {
     switch (st.zone) {
       case Z.TOP:
-        if (st.top < 3) return;
-        if (st.top === 3) openApps();
-        else if (st.top === 4) openSettings('style');
-        else if (st.top === 5) { var live = liveTV(); if (live) launcher(live.id, tr('TV aberta', 'Live TV', 'TV en vivo'))(); }
-        else if (st.top === 6) { st.zone = Z.SHELF; openDrawer(); st.drawer = 1 < drawerInputs ? 1 : 0; updateFocus(); }
-        else openSettings();
+        activateTop(st.top);
         return;
       case Z.ROWS:
         var p = view[st.r] && view[st.r].items[st.col], app = p && Data.appFor(p.app);
@@ -1241,8 +1221,8 @@
         break;
       case Z.TOP:
         if (dx) {
-          st.top = Math.max(0, Math.min(7, st.top + dx));
-          if (st.top < 3) selectTab(st.top);   // as on Apple TV: focusing a tab selects it
+          st.top = Math.max(0, Math.min(TOP.SETTINGS, st.top + dx));
+          if (st.top <= TOP.TAB_LAST) selectTab(st.top);   // as on Apple TV: focusing a tab selects it
         } else if (dy > 0) {
           if (shelf.length) st.zone = Z.SHELF;
           else if (view.length) { st.zone = Z.ROWS; st.r = 0; st.col = Math.min(rowF[0], view[0].items.length - 1); }
@@ -1288,7 +1268,7 @@
       if (zone !== Z.DRAWER && st.zone === Z.DRAWER && zone !== Z.SHELF) return;
       if (zone === Z.SHELF && st.zone === Z.DRAWER) closeDrawer();
       st.zone = zone;
-      if (zone === Z.TOP) { st.top = index; if (index < 3) selectTab(index); }
+      if (zone === Z.TOP) { st.top = index; if (index <= TOP.TAB_LAST) selectTab(index); }
       else if (zone === Z.ROWS) { st.r = node.r; st.col = node.c; }
       else if (zone === Z.SHELF) st.shelfPos = node.k;
       else if (zone === Z.DRAWER) st.drawer = index;
@@ -1297,6 +1277,7 @@
       else if (zone === Z.EDIT) st.edit = index;
       updateFocus();
     };
+    node.onmousedown = function (e) { if (e && e.preventDefault) e.preventDefault(); };   // buttons never take the DOM focus: OK stays ours
     node.onclick = function () { node.onmouseover(); activate(); };
   }
 
@@ -1423,7 +1404,6 @@
 
   function renderAll() {
     renderTop();
-    renderQuotes();
     renderRows(true);
     renderShelf();
     renderDrawer();
@@ -1456,7 +1436,6 @@
   }
 
   Data.onChange(function () {
-    renderQuotes();
     renderRows();
     renderMini();
     renderPanels();

@@ -2,7 +2,7 @@
  * What the home screen shows, kept in localStorage so it opens with numbers:
  *  - the picks: what's trending this week and recent releases, only from the streaming apps on this TV (TMDB, with
  *    the person's own free key from config.properties), three per hour;
- *  - weather, sunrise and sunset (Open-Meteo, every 30 min) and optional crypto prices (Binance, every 5 min).
+ *  - weather, sunrise and sunset (Open-Meteo, every 30 min). No crypto prices: this home screen doesn't fetch them.
  * Settings changed on the TV (Prefs) win over config.properties, as on Android. Built without a city (--generic), the
  * TV's time zone gives the city, and its country the currency and the region (zones.js).
  */
@@ -52,15 +52,8 @@ var Prefs = (function () {
     motion: function () { return pick('motion', 'normal'); },
     wallpaper: function () { return pick('wallpaper', 'hero'); },
     weather: function () { return pick('weather', true); },
-    quotes: function () { return pick('quotes', CONFIG.showCrypto !== false); },
-    coin: function (i) { var c = pick('coins', null); return c ? c[i] !== false : true; },
     shelf: function () { return pick('shelf', null); },
-    set: function (name, value) { v[name] = value; save(); this.version++; },
-    setCoin: function (i, on) {
-      var c = (pick('coins', null) || [true, true, true, true]).slice();
-      c[i] = on;
-      this.set('coins', c);
-    }
+    set: function (name, value) { v[name] = value; save(); this.version++; }
   };
 })();
 
@@ -142,78 +135,16 @@ var Data = (function () {
     });
   }
 
-  // MARK: - Prices
-
-  var COINS = ['BTC', 'ETH', 'SOL', 'USDT'];
-  var CURRENCY = Place.currency;
-  var QUOTE = CURRENCY === 'USD' ? 'USDT' : CURRENCY;
-  /** Binance refuses the whole request when it has no pairs in the currency (INR...): the prices go in dollars then. */
-  function inDollars() {
-    store('dollarsFor', CURRENCY);
-    CURRENCY = 'USD';
-    QUOTE = 'USDT';
-  }
-  if (stored('dollarsFor') === CURRENCY && CURRENCY !== 'USD') {
-    CURRENCY = 'USD';
-    QUOTE = 'USDT';
-  }
-  var prices = [NaN, NaN, NaN, NaN], changes = [NaN, NaN, NaN, NaN], pricesAt = 0, fetchingPrices = false;
-
-  /** Indexes in COINS of the coins that are on (the dollar only in Brazilian reais, where Binance lists it). */
-  function activeCoins() {
-    var out = [];
-    if (!Prefs.quotes()) return out;
-    for (var i = 0; i < COINS.length; i++) if (Prefs.coin(i) && (i < 3 || CURRENCY === 'BRL')) out.push(i);
-    return out;
-  }
-
-  function parsePrices(list) {
-    var found = 0;
-    for (var i = 0; list && i < list.length; i++) {
-      for (var k = 0; k < COINS.length; k++) {
-        if (list[i].symbol !== COINS[k] + QUOTE) continue;
-        found++;
-        var last = parseFloat(list[i].lastPrice), open = parseFloat(list[i].openPrice);
-        prices[k] = last;
-        changes[k] = open > 0 ? (last - open) / open * 100 : NaN;
-      }
-    }
-    return found;
-  }
-
-  (function () {
-    var p = stored('prices');
-    if (p && p.quote === QUOTE && parsePrices(p.body)) pricesAt = p.at;
-  })();
-
-  function refreshPrices() {
-    var coins = activeCoins(), now = Date.now();
-    if (!coins.length || fetchingPrices || (now - pricesAt < 5 * 60000 && now >= pricesAt)) return;
-    fetchingPrices = true;
-    var symbols = coins.map(function (i) { return '%22' + COINS[i] + QUOTE + '%22'; }).join(',');
-    var path = '/api/v3/ticker/24hr?type=MINI&symbols=%5B' + symbols + '%5D';
-    // Binance.com refuses the US (HTTP 451); Binance.US answers the same call in dollars.
-    var hosts = ['https://api.binance.com', 'https://api.binance.us'];
-    (function next(h) {
-      get(hosts[h] + path, {}, function (err, body) {
-        // A pair Binance doesn't list (HTTP 400): the prices go in dollars.
-        if (err && err.message === 'HTTP 400' && QUOTE !== 'USDT') { fetchingPrices = false; inDollars(); refreshPrices(); return; }
-        if (err || !parsePrices(body)) {
-          if (h + 1 < hosts.length && !(err && err.message === 'HTTP 400')) next(h + 1);
-          else fetchingPrices = false;
-          return;
-        }
-        fetchingPrices = false;
-        pricesAt = Date.now();
-        store('prices', {quote: QUOTE, body: body, at: pricesAt});
-        changed();
-      });
-    })(0);
-  }
-
   // MARK: - Picks (TMDB)
 
-  var KEY = (CONFIG.tmdbKey || '').trim();
+  // Only the characters a TMDB key has (letters, digits, . _ -): a key pasted from a phone often brings spaces, line breaks
+  // or smart quotes along, and TMDB then answers 401.
+  var KEY = String(CONFIG.tmdbKey || '').replace(/[^A-Za-z0-9._-]/g, '');
+
+  /** Enough of the key to compare it with the one on the TMDB site, never all of it: "…d890, 32 characters". */
+  function keyHint() {
+    return '\u2026' + KEY.slice(-4) + ', ' + KEY.length + ' ' + tr('caracteres', 'characters', 'caracteres');
+  }
   var REGION = Place.country;
   var API = 'https://api.themoviedb.org/3';
 
@@ -540,7 +471,7 @@ var Data = (function () {
   /** The words for a failed request. */
   function rowsReason(err) {
     var m = err && err.message ? err.message : '';
-    if (m === 'TMDB rejected the key') return tr('TMDB rejeitou a chave', 'TMDB rejected the key', 'TMDB rechazó la clave');
+    if (m === 'TMDB rejected the key') return tr('TMDB rejeitou a chave', 'TMDB rejected the key', 'TMDB rechazó la clave') + ' (' + keyHint() + ')';
     var http = /^HTTP (\d+)/.exec(m);
     return tr('sem conexão', 'no connection', 'sin conexión') + (http ? ' (HTTP ' + http[1] + ')' : '');
   }
@@ -674,18 +605,8 @@ var Data = (function () {
     return out;
   }
 
-  // MARK: - Formatting
-
-  function fmt(v, digits) {
-    try { return v.toLocaleString(I18N.locale(), {minimumFractionDigits: digits, maximumFractionDigits: digits}); } catch (e) { return v.toFixed(digits); }
-  }
-
-  var SYMBOLS = {USD: '$', BRL: 'R$ ', EUR: '€', GBP: '£', JPY: '¥'};
-
   return {
-    COINS: COINS,
     city: Place.city,
-    currency: CURRENCY,
     onChange: function (fn) { listeners.push(fn); },
     setApps: function (apps) {
       var sig = apps.map(function (a) { return a.id; }).sort().join('|'), before = installed.map(function (a) { return a.id; }).sort().join('|');
@@ -702,15 +623,10 @@ var Data = (function () {
       return {state: rows().length ? 'ok' : 'idle', message: ''};
     },
     appFor: appFor,
-    refresh: function () { refreshWeather(); refreshPrices(); refreshRecs(); refreshRows(); },
+    refresh: function () { refreshWeather(); refreshRecs(); refreshRows(); },
     rows: rows,
-    settingsChanged: function () { pricesAt = 0; refreshPrices(); changed(); },
     get weather() { return weather; },
     get weatherAt() { return weatherAt; },
-    prices: prices,
-    changes: changes,
-    get pricesAt() { return pricesAt; },
-    activeCoins: activeCoins,
     hasKey: function () { return !!KEY; },
     recsError: function () { return recsError; },
     picks: now,
@@ -728,19 +644,6 @@ var Data = (function () {
       return mins < rise || mins >= set;
     },
 
-    compact: function (v) {
-      if (isNaN(v)) return '—';
-      if (v >= 10000) return fmt(v / 1000, 1) + 'k';
-      if (v >= 1000) return fmt(v / 1000, 2) + 'k';
-      if (v >= 100) return fmt(v, 0);
-      return fmt(v, 2);
-    },
-    money: function (v) {
-      var s = SYMBOLS[CURRENCY] || CURRENCY + ' ';
-      if (isNaN(v)) return s + '—';
-      return s + (v >= 1000 ? fmt(v, 0) : fmt(v, 2));
-    },
-    change: function (v) { return isNaN(v) ? '' : (v >= 0 ? '+' : '−') + fmt(Math.abs(v), 1) + '%'; },
     degrees: function (v) {
       if (v === undefined || v === null || isNaN(v)) return '—';
       var unit = Prefs.temperature();
@@ -787,7 +690,6 @@ var Data = (function () {
       if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snowflake';
       if (code >= 95) return 'thunderstorm';
       return 'rainy';
-    },
-    coinName: function (i) { return i === 3 ? tr('Dólar', 'Dollar', 'Dólar') : ['Bitcoin', 'Ethereum', 'Solana'][i]; }
+    }
   };
 })();
